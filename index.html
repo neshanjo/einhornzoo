@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Einhornzoo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --glass: rgba(255,255,255,.82);
+    --ink: #4a3b6b;
+    --ink-soft: #8474a8;
+    --pink: #ff7fb8;
+    --pink-deep: #f0559b;
+    --lilac: #b79bff;
+    --mint: #7fdcb5;
+    --shadow: 0 8px 28px rgba(90,60,140,.22);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;color:var(--ink);
+    font-family:"Baloo 2","Nunito",ui-rounded,"SF Pro Rounded","Segoe UI",sans-serif;font-size:16px;
+    -webkit-user-select:none;user-select:none}
+  canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .glass{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:2px solid rgba(255,255,255,.9);border-radius:22px;box-shadow:var(--shadow)}
+  button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+  input{font:inherit;color:inherit}
+
+  /* Kopfzeile */
+  #top{position:fixed;top:14px;left:14px;display:flex;gap:10px;align-items:center;padding:8px 16px}
+  #top h1{margin:0;font-size:22px;line-height:1;background:linear-gradient(90deg,#ff6fae,#a070ff,#4fb8ff);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  #stats{font-size:15px;color:var(--ink-soft);white-space:nowrap}
+  #topRight{position:fixed;top:14px;right:14px;display:flex;gap:8px}
+  .round{width:46px;height:46px;border-radius:50%;font-size:22px;display:grid;place-items:center;
+    background:var(--glass);border:2px solid #fff;box-shadow:var(--shadow);transition:transform .12s}
+  .round:hover{transform:scale(1.1)}
+
+  /* Werkzeugleiste */
+  #bottom{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;max-width:calc(100vw - 16px)}
+  #hint{padding:6px 16px;font-size:15px;border-radius:16px;text-align:center;max-width:min(92vw,640px)}
+  #sub{display:none;gap:6px;padding:6px}
+  #sub.on{display:flex}
+  #tools{display:flex;gap:6px;padding:8px}
+  .tool{display:flex;flex-direction:column;align-items:center;gap:0;min-width:76px;padding:6px 8px 4px;border-radius:16px;
+    font-size:13px;line-height:1.2;transition:background .15s,transform .12s}
+  .tool .ico{font-size:28px;line-height:1.15}
+  .tool:hover{background:rgba(183,155,255,.22);transform:translateY(-2px)}
+  .tool.on{background:linear-gradient(160deg,#ffd0e6,#dccbff);box-shadow:inset 0 0 0 2px #fff, 0 3px 10px rgba(160,112,255,.35)}
+  .tool.special{background:linear-gradient(160deg,#ff8fc3,#b58cff);color:#fff}
+  .tool.special:hover{background:linear-gradient(160deg,#ff7fb8,#a070ff)}
+  .sep{width:2px;background:rgba(132,116,168,.2);margin:4px 2px;border-radius:2px}
+  #sub .tool{min-width:66px;font-size:12px}
+  #sub .tool .ico{font-size:24px}
+
+  /* Einhorn-Panel */
+  #panel{position:fixed;right:14px;top:74px;width:270px;padding:14px;display:none;max-height:calc(100vh - 200px);overflow:auto}
+  #panel.on{display:block}
+  #panel .head{display:flex;gap:6px;align-items:center}
+  #uName{flex:1;min-width:0;font-size:21px;font-weight:700;border:2px solid transparent;border-radius:10px;background:transparent;padding:0 6px;
+    -webkit-user-select:text;user-select:text}
+  #uName:hover,#uName:focus{border-color:var(--lilac);background:#fff;outline:none}
+  #uClose{font-size:18px;width:30px;height:30px;border-radius:50%;background:rgba(132,116,168,.15)}
+  #uMood{font-size:14px;color:var(--ink-soft);margin:0 6px 8px}
+  .bar{display:grid;grid-template-columns:24px 62px 1fr;align-items:center;gap:6px;font-size:14px;margin:5px 0}
+  .bar .track{height:12px;background:rgba(132,116,168,.18);border-radius:8px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:8px;transition:width .3s}
+  #bSat .fill{background:linear-gradient(90deg,#ffb35c,#ff7f6b)}
+  #bEnergy .fill{background:linear-gradient(90deg,#7fd0ff,#8f9bff)}
+  #bJoy .fill{background:linear-gradient(90deg,#ff9ecf,#ff5fa2)}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+  .btn{padding:7px 8px;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(90,60,140,.14);font-size:14px;transition:transform .12s,background .15s}
+  .btn:hover{transform:translateY(-1px);background:#fff4fa}
+  .btn.on{background:linear-gradient(160deg,#ffd0e6,#dccbff)}
+  .btn.primary{background:linear-gradient(160deg,#ff8fc3,#b58cff);color:#fff;font-weight:700}
+  .btn.quiet{background:transparent;box-shadow:none;color:var(--ink-soft)}
+  h3{margin:10px 0 4px;font-size:14px;color:var(--ink-soft);font-weight:700;letter-spacing:.3px}
+  #accGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .acc{padding:5px 2px;border-radius:12px;background:#fff;font-size:11px;line-height:1.2;box-shadow:0 2px 6px rgba(90,60,140,.1)}
+  .acc .ico{font-size:22px;display:block}
+  .acc.on{background:linear-gradient(160deg,#ffd0e6,#dccbff);box-shadow:inset 0 0 0 2px #fff,0 2px 8px rgba(160,112,255,.4)}
+  #uFriend{font-size:13px;color:var(--ink-soft);margin-top:8px}
+
+  /* Namensschilder */
+  #tags{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .tag{position:absolute;left:0;top:0;padding:0 9px;border-radius:10px;background:rgba(255,255,255,.78);font-size:13px;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(90,60,140,.18);will-change:transform}
+  .tag.sel{background:linear-gradient(90deg,#ff8fc3,#b58cff);color:#fff;font-weight:700}
+
+  /* Dialoge */
+  .overlay{position:fixed;inset:0;background:rgba(74,59,107,.35);display:none;place-items:center;z-index:10;padding:12px}
+  .overlay.on{display:grid}
+  .modal{padding:20px;max-width:760px;width:100%;max-height:96vh;overflow:auto}
+  .modal h2{margin:0 0 10px;font-size:26px}
+  #creator .cols{display:flex;gap:18px;flex-wrap:wrap}
+  #previewWrap{flex:0 0 280px;height:320px;border-radius:20px;overflow:hidden;
+    background:radial-gradient(circle at 50% 85%,#b9e986 0 34%,transparent 35%),linear-gradient(#bfe3ff,#ffe3f1)}
+  #preview{width:100%;height:100%;display:block}
+  #creator .ctrl{flex:1;min-width:280px}
+  .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .row label{width:74px;font-size:14px;color:var(--ink-soft);flex:none}
+  .sw{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 5px rgba(90,60,140,.3);transition:transform .1s}
+  .sw:hover{transform:scale(1.15)}
+  .sw.on{outline:3px solid var(--pink-deep);outline-offset:1px}
+  input[type=color]{width:30px;height:30px;padding:0;border:none;background:none;cursor:pointer}
+  #cName{flex:1;min-width:120px;padding:5px 12px;border-radius:12px;border:2px solid #e6dbff;background:#fff;font-size:17px;-webkit-user-select:text;user-select:text}
+  #cName:focus{outline:none;border-color:var(--lilac)}
+  .seg{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+  .seg .btn{padding:4px 10px;font-size:13px}
+  input[type=range]{flex:1;accent-color:var(--pink-deep)}
+  .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .foot .btn{padding:9px 18px;font-size:16px}
+  #help ul{margin:6px 0;padding-left:4px;list-style:none;line-height:1.55}
+  #help li{margin:3px 0}
+  #help .modal{max-width:560px}
+
+  #toasts{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;z-index:20}
+  .toast{padding:7px 18px;border-radius:16px;font-size:16px;animation:pop .3s ease-out;transition:opacity .5s}
+  @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+  #loading{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#bfe3ff,#ffe3f1);font-size:24px;z-index:50}
+  @media (max-width:720px){
+    .tool{min-width:54px;font-size:11px}.tool .ico{font-size:23px}
+    #panel{width:230px;top:66px}
+    #stats{display:none}
+  }
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="tags"></div>
+
+<div id="top" class="glass">
+  <h1>🦄 Einhornzoo</h1>
+  <div id="stats"></div>
+</div>
+<div id="topRight">
+  <button class="round" id="btnTime" title="Tag / Nacht wechseln">🌙</button>
+  <button class="round" id="btnSound" title="Ton an / aus">🔔</button>
+  <button class="round" id="btnHelp" title="Hilfe">❓</button>
+</div>
+
+<div id="panel" class="glass">
+  <div class="head">
+    <input id="uName" maxlength="18" title="Name ändern">
+    <button id="uClose" title="Auswahl aufheben">✕</button>
+  </div>
+  <div id="uMood"></div>
+  <div class="bar" id="bSat"><span>🍎</span><span>Satt</span><div class="track"><div class="fill"></div></div></div>
+  <div class="bar" id="bEnergy"><span>⚡</span><span>Energie</span><div class="track"><div class="fill"></div></div></div>
+  <div class="bar" id="bJoy"><span>💗</span><span>Freude</span><div class="track"><div class="fill"></div></div></div>
+  <div class="actions">
+    <button class="btn" id="aPet">💗 Streicheln</button>
+    <button class="btn" id="aMagic">✨ Zaubern</button>
+    <button class="btn" id="aLook">🎨 Aussehen</button>
+    <button class="btn" id="aFollow">🎥 Folgen</button>
+  </div>
+  <h3>ACCESSOIRES</h3>
+  <div id="accGrid"></div>
+  <div id="uFriend"></div>
+  <button class="btn quiet" id="aBye" style="margin-top:8px;width:100%">👋 In die Freiheit entlassen</button>
+</div>
+
+<div id="bottom">
+  <div id="hint" class="glass"></div>
+  <div id="sub" class="glass"></div>
+  <div id="tools" class="glass">
+    <button class="tool" data-tool="select"><span class="ico">👆</span>Auswählen</button>
+    <button class="tool" data-tool="feed"><span class="ico">🍎</span>Füttern</button>
+    <button class="tool" data-tool="paddock"><span class="ico">🏡</span>Koppel</button>
+    <button class="tool" data-tool="deco"><span class="ico">🌷</span>Dekorieren</button>
+    <button class="tool" data-tool="remove"><span class="ico">🧹</span>Entfernen</button>
+    <div class="sep"></div>
+    <button class="tool" id="btnRandom"><span class="ico">🎲</span>Zufalls-Einhorn</button>
+    <button class="tool special" id="btnCreate"><span class="ico">🦄</span>Erschaffen</button>
+  </div>
+</div>
+
+<div id="creator" class="overlay">
+  <div class="modal glass">
+    <h2 id="cTitle">Neues Einhorn erschaffen</h2>
+    <div class="cols">
+      <div id="previewWrap"><canvas id="preview"></canvas></div>
+      <div class="ctrl">
+        <div class="row"><label>Name</label><input id="cName" maxlength="18"><button class="btn" id="cNameRnd" title="Zufälliger Name">🎲</button></div>
+        <div class="row"><label>Fell</label><div class="seg" id="cCoat"></div><input type="color" id="cCoatX" title="Eigene Farbe"></div>
+        <div class="row"><label>Mähne</label><div class="seg" id="cMane"></div><input type="color" id="cManeX" title="Eigene Farbe"></div>
+        <div class="row"><label>Horn</label><div class="seg" id="cHorn"></div></div>
+        <div class="row"><label>Augen</label><div class="seg" id="cEye"></div></div>
+        <div class="row"><label>Frisur</label><div class="seg" id="cStyle"></div></div>
+        <div class="row"><label>Muster</label><div class="seg" id="cPattern"></div></div>
+        <div class="row"><label>Flügel</label><div class="seg" id="cWings"></div></div>
+        <div class="row"><label>Größe</label><input type="range" id="cSize" min="0.8" max="1.25" step="0.01"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="cRandom">🎲 Alles zufällig</button>
+      <span style="flex:1"></span>
+      <button class="btn quiet" id="cCancel">Abbrechen</button>
+      <button class="btn primary" id="cOk">✨ Erschaffen</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="overlay">
+  <div class="modal glass">
+    <h2>Willkommen im Einhornzoo 🦄</h2>
+    <ul>
+      <li>🦄 <b>Erschaffen</b> – gestalte dein eigenes Einhorn oder würfle eins mit 🎲.</li>
+      <li>👆 <b>Auswählen</b> – Einhorn anklicken. Danach auf die Wiese klicken, um es dorthin zu schicken. Nochmal anklicken = streicheln.</li>
+      <li>🍎 <b>Füttern</b> – Futter auf die Wiese legen oder direkt ein Einhorn füttern.</li>
+      <li>🏡 <b>Koppel</b> – zwei Ecken anklicken, fertig ist der Zaun. Einhörner bleiben in ihrer Koppel, bis du sie herausschickst.</li>
+      <li>🌷 <b>Dekorieren</b> – Blumen, Bäume, Pilze und Laternen pflanzen.</li>
+      <li>💞 Glückliche Einhörner schließen Freundschaften – und manchmal kommt ein Fohlen dazu!</li>
+      <li>🎥 <b>Kamera</b> – Ziehen = drehen, Mausrad = zoomen, Rechtsklick-Ziehen oder WASD = bewegen.</li>
+    </ul>
+    <div class="foot">
+      <button class="btn quiet" id="hReset">🗑️ Neu anfangen</button>
+      <span style="flex:1"></span>
+      <button class="btn primary" id="hOk">Los geht's!</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="loading">✨ Der Zauberwald erwacht …</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ───────────────────────── Hilfsfunktionen ───────────────────────── */
+const $ = s => document.querySelector(s);
+const V3 = THREE.Vector3;
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const lerpAngle = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI; return a + d * t; };
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const SAVE_KEY = 'einhornzoo-v1';
+const WORLD_R = 64;
+const MAX_UNICORNS = 24;
+const ADULT = 200;          // Sekunden bis ein Fohlen erwachsen ist
+const DAY_LENGTH = 540;     // Sekunden pro Tag-Nacht-Zyklus
+
+/* ───────────────────────── Renderer & Szene ───────────────────────── */
+const canvas = $('#game');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xffe3f1, 80, 250);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.3, 900);
+camera.position.set(0, 13, 27);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 1, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 6;
+controls.maxDistance = 85;
+controls.maxPolarAngle = 1.46;
+controls.screenSpacePanning = false;
+
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x9fd08a, 1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 1, far: 260 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.08;
+scene.add(sun, sun.target);
+
+/* ───────────────────────── Gelände ───────────────────────── */
+const POND = { x: 22, z: -14, r: 11 };
+function baseH(x, z) {
+  return Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.05) * 2.2 + Math.sin(x * 0.11 + z * 0.07) * 0.7 + Math.cos(z * 0.13 - x * 0.05) * 0.5;
+}
+const WATER_Y = baseH(POND.x, POND.z) - 0.5;
+function heightAt(x, z) {
+  let h = baseH(x, z);
+  const r = Math.hypot(x, z);
+  if (r > 76) { const k = (r - 76) / 45; h += k * k * 40 * (0.7 + 0.3 * Math.sin(Math.atan2(z, x) * 7)); }
+  const d = Math.hypot(x - POND.x, z - POND.z);
+  if (d < POND.r + 7) h = lerp(h, WATER_Y - 2, smoothstep(0, 1, 1 - d / (POND.r + 7)));
+  return h;
+}
+const nearPond = (x, z) => Math.hypot(x - POND.x, z - POND.z) < POND.r + 7;
+const isWater = (x, z, margin = 0.15) => nearPond(x, z) && heightAt(x, z) < WATER_Y + margin;
+function forestDensity(x, z) {
+  const r = Math.hypot(x, z);
+  if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 9) return 0;
+  let d = smoothstep(44, 62, r);
+  if (r > 17) d = Math.max(d, smoothstep(0.45, 0.8, Math.sin(x * 0.075 + 2.1) * Math.sin(z * 0.068 + 0.7)));
+  if (r > 100) d *= Math.max(0, 1 - (r - 100) / 22);
+  return d;
+}
+
+let terrain;
+{
+  const geo = new THREE.PlaneGeometry(340, 340, 170, 170);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const cA = new THREE.Color('#8fd87a'), cB = new THREE.Color('#bdeb8a'), cF = new THREE.Color('#62b884'),
+    sand = new THREE.Color('#f5e6bb'), mount = new THREE.Color('#b9a2e6'), snow = new THREE.Color('#fff6ff'), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), h = heightAt(x, z), r = Math.hypot(x, z);
+    pos.setY(i, h);
+    const n = 0.5 + 0.5 * Math.sin(x * 0.21 + Math.sin(z * 0.13) * 2) * Math.cos(z * 0.17 + x * 0.05);
+    c.copy(cA).lerp(cB, n).lerp(cF, forestDensity(x, z) * 0.65);
+    if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 9) c.lerp(sand, smoothstep(WATER_Y + 0.7, WATER_Y + 0.1, h));
+    c.lerp(mount, smoothstep(82, 104, r));
+    c.lerp(snow, smoothstep(20, 34, h));
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  terrain.receiveShadow = true;
+  scene.add(terrain);
+}
+
+/* Teich */
+{
+  const water = new THREE.Mesh(new THREE.CircleGeometry(POND.r + 7, 48),
+    new THREE.MeshStandardMaterial({ color: '#7fd6f7', roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.82 }));
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(POND.x, WATER_Y, POND.z);
+  scene.add(water);
+  const rng = mulberry32(7);
+  const padMat = new THREE.MeshLambertMaterial({ color: '#5fbf7a' }), lilyMat = new THREE.MeshLambertMaterial({ color: '#ffb3d9' });
+  for (let i = 0; i < 26; i++) {
+    const a = rng() * TAU, r = rng() * POND.r, x = POND.x + Math.cos(a) * r, z = POND.z + Math.sin(a) * r;
+    if (heightAt(x, z) > WATER_Y - 0.35) continue;
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.4 + rng() * 0.35, 12, 0.4, TAU - 0.8), padMat);
+    pad.rotation.x = -Math.PI / 2; pad.rotation.z = rng() * TAU; pad.position.set(x, WATER_Y + 0.03, z);
+    scene.add(pad);
+    if (rng() < 0.5) { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), lilyMat); f.position.set(x, WATER_Y + 0.15, z); scene.add(f); }
+  }
+}
+
+/* ───────────────────────── Natur (instanziert) ───────────────────────── */
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new V3(), _s = new V3(), _c = new THREE.Color();
+function instanced(geo, mat, items, cast = true) {
+  const im = new THREE.InstancedMesh(geo, mat, items.length);
+  items.forEach((it, i) => {
+    _e.set(it.rx || 0, it.ry || 0, it.rz || 0); _q.setFromEuler(_e); _v.set(it.x, it.y, it.z);
+    if (typeof it.s === 'number') _s.set(it.s, it.s, it.s); else _s.set(it.s[0], it.s[1], it.s[2]);
+    im.setMatrixAt(i, _m.compose(_v, _q, _s));
+    if (it.c) im.setColorAt(i, _c.set(it.c));
+  });
+  if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  im.castShadow = cast;
+  scene.add(im);
+  return im;
+}
+
+const NG = {
+  trunk: new THREE.CylinderGeometry(0.2, 0.28, 1, 7),
+  cone: new THREE.ConeGeometry(1, 1, 7),
+  blob: new THREE.IcosahedronGeometry(1, 1),
+  stem: new THREE.CylinderGeometry(0.1, 0.14, 0.35, 8),
+  cap: new THREE.SphereGeometry(0.36, 12, 6, 0, TAU, 0, Math.PI / 2),
+  petal: new THREE.SphereGeometry(0.16, 8, 5),
+  center: new THREE.SphereGeometry(0.07, 6, 4),
+  fstem: new THREE.CylinderGeometry(0.02, 0.02, 0.26, 4),
+  tuft: new THREE.ConeGeometry(0.1, 0.38, 4),
+  rock: new THREE.DodecahedronGeometry(0.6, 0),
+};
+const NM = {
+  trunk: new THREE.MeshLambertMaterial({ color: '#9a6b4f' }),
+  leaf: new THREE.MeshLambertMaterial({ flatShading: true }),
+  white: new THREE.MeshLambertMaterial({ color: '#fff8ee' }),
+  cap: new THREE.MeshLambertMaterial({ emissive: '#ff5fc0', emissiveIntensity: 0 }),
+  flower: new THREE.MeshLambertMaterial(),
+  center: new THREE.MeshLambertMaterial({ color: '#ffe066' }),
+  green: new THREE.MeshLambertMaterial({ color: '#5fb86a' }),
+  tuft: new THREE.MeshLambertMaterial(),
+  rock: new THREE.MeshLambertMaterial({ color: '#b9b2cf', flatShading: true }),
+  lantern: new THREE.MeshStandardMaterial({ color: '#fff3c4', emissive: '#ffd66b', emissiveIntensity: 0.3 }),
+  wood: new THREE.MeshLambertMaterial({ color: '#b98a64' }),
+};
+const PINE_COLS = ['#3f9d6b', '#4fb07a', '#2f8f73', '#57b98a'];
+const LEAF_COLS = ['#6cc36a', '#86d17a', '#5db56f'];
+const BLOSSOM_COLS = ['#ffb7d9', '#e3b5ff', '#fff0f7', '#ffc9b0'];
+const FLOWER_COLS = ['#ff8fc3', '#ffd24d', '#ffffff', '#b58cff', '#ff7f7f', '#8fd3ff', '#ffa6e0'];
+
+/* Hindernisse (Baumstämme) in einem Raster */
+const obstacleGrid = new Map();
+const cellKey = (x, z) => Math.floor(x / 5) + ',' + Math.floor(z / 5);
+function addObstacle(o) { const k = cellKey(o.x, o.z); if (!obstacleGrid.has(k)) obstacleGrid.set(k, []); obstacleGrid.get(k).push(o); return o; }
+function removeObstacle(o) { const a = obstacleGrid.get(cellKey(o.x, o.z)); if (a) { const i = a.indexOf(o); if (i >= 0) a.splice(i, 1); } }
+function forObstaclesNear(x, z, fn) {
+  const cx = Math.floor(x / 5), cz = Math.floor(z / 5);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const a = obstacleGrid.get((cx + i) + ',' + (cz + j)); if (a) for (const o of a) fn(o); }
+}
+function nearObstacle(x, z, dist) { let hit = false; forObstaclesNear(x, z, o => { if (Math.hypot(o.x - x, o.z - z) < o.r + dist) hit = true; }); return hit; }
+
+{
+  const rng = mulberry32(20261112);
+  const trunks = [], cones = [], blobs = [];
+  for (let i = 0; i < 2600; i++) {
+    const x = (rng() - 0.5) * 240, z = (rng() - 0.5) * 240;
+    if (rng() > forestDensity(x, z) * 0.75) continue;
+    const y = heightAt(x, z) - 0.1; if (y > 16) continue;
+    const s = 0.8 + rng() * 0.8, ry = rng() * TAU;
+    addObstacle({ x, z, r: 0.35 * s });
+    if (rng() < 0.5) {
+      const c = PINE_COLS[Math.floor(rng() * PINE_COLS.length)];
+      trunks.push({ x, y: y + 0.6 * s, z, s: [s, 1.3 * s, s] });
+      cones.push({ x, y: y + 2.1 * s, z, s: [1.5 * s, 2.2 * s, 1.5 * s], ry, c });
+      cones.push({ x, y: y + 3.2 * s, z, s: [1.15 * s, 1.9 * s, 1.15 * s], ry: ry + 1, c });
+      cones.push({ x, y: y + 4.2 * s, z, s: [0.8 * s, 1.6 * s, 0.8 * s], ry: ry + 2, c });
+    } else {
+      const cols = rng() < 0.32 ? BLOSSOM_COLS : LEAF_COLS, c = cols[Math.floor(rng() * cols.length)];
+      trunks.push({ x, y: y + 1.0 * s, z, s: [1.1 * s, 2 * s, 1.1 * s] });
+      blobs.push({ x, y: y + 3.0 * s, z, s: 1.5 * s, ry, c });
+      blobs.push({ x: x + 0.9 * s, y: y + 2.5 * s, z: z + 0.3 * s, s: 1.05 * s, ry, c });
+      blobs.push({ x: x - 0.8 * s, y: y + 2.6 * s, z: z - 0.4 * s, s: 1.1 * s, ry, c });
+    }
+  }
+  instanced(NG.trunk, NM.trunk, trunks);
+  instanced(NG.cone, NM.leaf, cones);
+  instanced(NG.blob, NM.leaf, blobs);
+
+  // Blumen
+  const petals = [], centers = [], stems = [];
+  for (let i = 0; i < 5200 && petals.length < 1700; i++) {
+    const a = rng() * TAU, r = Math.sqrt(rng()) * 78, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (forestDensity(x, z) > 0.5 || isWater(x, z, 0.3)) continue;
+    if (Math.sin(x * 0.3 + 1) * Math.cos(z * 0.27) + Math.sin(x * 0.07 - z * 0.09) < 0.25) continue;
+    const y = heightAt(x, z), s = 0.7 + rng() * 0.8;
+    petals.push({ x, y: y + 0.26 * s, z, s: [s, 0.45 * s, s], c: FLOWER_COLS[Math.floor(rng() * FLOWER_COLS.length)] });
+    centers.push({ x, y: y + 0.31 * s, z, s });
+    stems.push({ x, y: y + 0.13 * s, z, s });
+  }
+  instanced(NG.petal, NM.flower, petals, false);
+  instanced(NG.center, NM.center, centers, false);
+  instanced(NG.fstem, NM.green, stems, false);
+
+  // Grasbüschel
+  const tufts = [];
+  for (let i = 0; i < 5000; i++) {
+    const a = rng() * TAU, r = Math.sqrt(rng()) * 80, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (isWater(x, z, 0.3)) continue;
+    const s = 0.45 + rng() * 0.6;
+    tufts.push({ x, y: heightAt(x, z) + 0.15 * s, z, s, ry: rng() * TAU, rz: (rng() - 0.5) * 0.4, c: rng() < 0.5 ? '#7fcf6e' : '#a5e07f' });
+  }
+  instanced(NG.tuft, NM.tuft, tufts, false);
+
+  // Pilze & Steine
+  const mStems = [], mCaps = [], rocks = [];
+  for (let i = 0; i < 900 && mCaps.length < 90; i++) {
+    const x = (rng() - 0.5) * 150, z = (rng() - 0.5) * 150, fd = forestDensity(x, z);
+    if (fd < 0.25 || isWater(x, z, 0.5) || nearObstacle(x, z, 0.6)) continue;
+    const y = heightAt(x, z), s = rng() < 0.12 ? 2.2 + rng() * 1.5 : 0.6 + rng() * 0.8;
+    mStems.push({ x, y: y + 0.17 * s, z, s });
+    mCaps.push({ x, y: y + 0.3 * s, z, s, c: ['#ff5f7e', '#ff7fb8', '#b58cff', '#ff9a5c'][Math.floor(rng() * 4)] });
+  }
+  instanced(NG.stem, NM.white, mStems);
+  instanced(NG.cap, NM.cap, mCaps);
+  for (let i = 0; i < 60; i++) {
+    const a = rng() * TAU, r = 10 + rng() * 80, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (isWater(x, z, 0.2)) continue;
+    const s = 0.4 + rng() * 1.1;
+    rocks.push({ x, y: heightAt(x, z) + 0.1 * s, z, s: [s, s * 0.7, s * 0.9], ry: rng() * TAU, rx: rng() });
+  }
+  instanced(NG.rock, NM.rock, rocks);
+}
+
+/* ───────────────────────── Himmel ───────────────────────── */
+const skyU = { top: { value: new THREE.Color() }, bottom: { value: new THREE.Color() } };
+const sky = new THREE.Mesh(new THREE.SphereGeometry(420, 24, 16), new THREE.ShaderMaterial({
+  uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+  fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h=clamp(vP.y*1.5+0.04,0.,1.); gl_FragColor=vec4(mix(bottom,top,pow(h,.65)),1.); \n#include <colorspace_fragment>\n }',
+}));
+sky.renderOrder = -10;
+scene.add(sky);
+
+function makeGlowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const glowTex = makeGlowTexture();
+const emojiCache = {};
+function emojiTex(ch) {
+  if (emojiCache[ch]) return emojiCache[ch];
+  const c = document.createElement('canvas'); c.width = c.height = 96;
+  const g = c.getContext('2d'); g.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 48, 54);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return emojiCache[ch] = t;
+}
+
+const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#fff3c0', fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+sunSprite.scale.setScalar(90);
+const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#dfe6ff', fog: false, depthWrite: false, transparent: true }));
+moonSprite.scale.setScalar(42);
+scene.add(sunSprite, moonSprite);
+
+let stars;
+{
+  const n = 700, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, y = Math.random() * 0.95 + 0.03, r = Math.sqrt(1 - y * y);
+    p[i * 3] = Math.cos(a) * r * 400; p[i * 3 + 1] = y * 400; p[i * 3 + 2] = Math.sin(a) * r * 400;
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  stars = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 2.2, sizeAttenuation: false, transparent: true, fog: false, depthWrite: false }));
+  scene.add(stars);
+}
+
+/* Regenbogen */
+const rainbow = new THREE.Group();
+['#ff6b8b', '#ffa64d', '#ffe14d', '#6ddc8b', '#5cc8ff', '#7f8cff', '#b28dff'].forEach((c, i) => {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(78 - i * 1.5, 0.78, 6, 72, Math.PI),
+    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
+  rainbow.add(m);
+});
+rainbow.position.set(-45, -6, -175); rainbow.rotation.y = 0.25;
+scene.add(rainbow);
+
+/* Wolken */
+const clouds = [];
+{
+  const mat = new THREE.MeshLambertMaterial({ color: '#ffffff', emissive: '#ffe9f4', emissiveIntensity: 0.35, flatShading: true, fog: false, transparent: true, opacity: 0.95 });
+  for (let i = 0; i < 16; i++) {
+    const g = new THREE.Group();
+    const n = 4 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < n; k++) {
+      const b = new THREE.Mesh(NG.blob, mat);
+      b.position.set((k - n / 2) * 4.2 + rand(-1, 1), rand(-1, 1.5), rand(-2.5, 2.5));
+      b.scale.setScalar(rand(3, 5.5) * (1 - Math.abs(k - n / 2) / n * 0.7)); b.scale.y *= 0.7;
+      g.add(b);
+    }
+    const a = Math.random() * TAU, r = rand(50, 210);
+    g.position.set(Math.cos(a) * r, rand(48, 78), Math.sin(a) * r);
+    g.userData.speed = rand(0.5, 1.4);
+    scene.add(g); clouds.push(g);
+  }
+}
+
+/* Glühwürmchen */
+let fireflies; const fireflyBase = [];
+{
+  const n = 140, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 70, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    fireflyBase.push({ x, y: Math.max(heightAt(x, z), WATER_Y) + rand(0.6, 3), z, ph: rand(0, TAU) });
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ map: glowTex, color: '#fff59a', size: 0.55, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  fireflies.frustumCulled = false;
+  scene.add(fireflies);
+}
+
+/* Schmetterlinge */
+const butterflies = [];
+{
+  const wg = new THREE.PlaneGeometry(0.28, 0.34); wg.translate(0.14, 0, 0);
+  for (let i = 0; i < 16; i++) {
+    const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: pick(FLOWER_COLS), side: THREE.DoubleSide });
+    const l = new THREE.Mesh(wg, mat), r = new THREE.Mesh(wg, mat); r.scale.x = -1;
+    l.rotation.x = r.rotation.x = -Math.PI / 2;
+    const wl = new THREE.Group(), wr = new THREE.Group(); wl.add(l); wr.add(r); g.add(wl, wr);
+    const a = Math.random() * TAU, rr = rand(4, 45);
+    g.userData = { cx: Math.cos(a) * rr, cz: Math.sin(a) * rr, rad: rand(2, 6), sp: rand(0.3, 0.7), ph: rand(0, TAU), wl, wr };
+    scene.add(g); butterflies.push(g);
+  }
+}
+
+/* ───────────────────────── Partikel ───────────────────────── */
+const particles = [];
+function spawnP(tex, pos, o = {}) {
+  if (particles.length > 380) return;
+  const mat = new THREE.SpriteMaterial({ map: tex, color: o.color ?? 0xffffff, transparent: true, depthWrite: false, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending });
+  const s = new THREE.Sprite(mat); s.position.copy(pos); s.scale.setScalar(o.size ?? 0.5); scene.add(s);
+  const life = o.life ?? 1.2;
+  particles.push({ s, vel: o.vel ?? new V3(), life, max: life, size: o.size ?? 0.5, grow: o.grow ?? 0, gravity: o.gravity ?? 0 });
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.s); p.s.material.dispose(); particles.splice(i, 1); continue; }
+    p.vel.y -= p.gravity * dt; p.s.position.addScaledVector(p.vel, dt);
+    const k = p.life / p.max; p.s.material.opacity = Math.min(1, k * 2.2); p.s.scale.setScalar(p.size * (1 + p.grow * (1 - k)));
+  }
+}
+const RAINBOW = ['#ff6b8b', '#ffa64d', '#ffe14d', '#6ddc8b', '#5cc8ff', '#b28dff'];
+function sparkleBurst(pos, n = 18, spread = 2.5) {
+  for (let i = 0; i < n; i++) {
+    const v = new V3(rand(-1, 1), rand(0.2, 1.4), rand(-1, 1)).normalize().multiplyScalar(rand(0.5, spread));
+    spawnP(glowTex, pos, { vel: v, life: rand(0.7, 1.5), size: rand(0.25, 0.6), color: pick(RAINBOW), add: true, gravity: 1.2 });
+  }
+}
+
+/* ───────────────────────── Ton ───────────────────────── */
+let audioCtx = null, soundOn = true;
+function chime(notes, gap = 0.09, vol = 0.07) {
+  if (!soundOn) return;
+  try {
+    audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    notes.forEach((f, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + i * gap;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + 0.55);
+    });
+  } catch (e) { /* kein Ton verfügbar */ }
+}
+
+/* ───────────────────────── Einhorn-Modell ───────────────────────── */
+const UG = {
+  body: new THREE.CapsuleGeometry(0.48, 0.85, 6, 16),
+  leg: new THREE.CylinderGeometry(0.17, 0.125, 0.82, 10),
+  hoof: new THREE.CylinderGeometry(0.14, 0.165, 0.2, 10),
+  neck: new THREE.CylinderGeometry(0.2, 0.3, 0.9, 12),
+  sph: new THREE.SphereGeometry(1, 16, 12),
+  cone: new THREE.ConeGeometry(1, 1, 10),
+  horn: new THREE.ConeGeometry(0.085, 0.62, 8),
+  snout: new THREE.CapsuleGeometry(0.185, 0.22, 4, 12),
+  torus: new THREE.TorusGeometry(1, 0.3, 8, 20),
+  box: new THREE.BoxGeometry(1, 1, 1),
+  cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
+  band: new THREE.CylinderGeometry(0.135, 0.12, 0.09, 10, 1, true),
+  hit: new THREE.SphereGeometry(1.35, 8, 6),
+};
+const ACCESSORIES = [
+  { id: 'crown', name: 'Krone', icon: '👑', slot: 'head' },
+  { id: 'hat', name: 'Zauberhut', icon: '🎩', slot: 'head' },
+  { id: 'wreath', name: 'Blumenkranz', icon: '🌸', slot: 'head' },
+  { id: 'scarf', name: 'Schal', icon: '🧣', slot: 'neck' },
+  { id: 'bell', name: 'Glöckchen', icon: '🔔', slot: 'neck' },
+  { id: 'saddle', name: 'Satteldecke', icon: '🎠', slot: 'back' },
+  { id: 'bow', name: 'Schleife', icon: '🎀', slot: 'tail' },
+  { id: 'glasses', name: 'Sonnenbrille', icon: '🕶️', slot: 'face' },
+  { id: 'glitter', name: 'Glitzerstaub', icon: '✨', slot: 'aura' },
+];
+
+function buildUnicornModel(look, acc = new Set()) {
+  const mats = [];
+  const M = (color, o = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...o }); mats.push(m); return m; };
+  const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; return m; };
+  const sph = (mat, r, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = mesh(UG.sph, mat, x, y, z); m.scale.set(r * sx, r * sy, r * sz); return m; };
+
+  const coat = M(look.coat), maneMats = look.mane.map(c => M(c, { roughness: 0.6 }));
+  const mane = i => maneMats[((i % maneMats.length) + maneMats.length) % maneMats.length];
+  const hornMat = M(look.horn, { emissive: look.horn, emissiveIntensity: 0.3, roughness: 0.3, metalness: 0.3 });
+  const hoofMat = M(look.horn, { roughness: 0.4, metalness: 0.2 });
+  const muzzle = M(new THREE.Color(look.coat).lerp(new THREE.Color('#ffb0cf'), 0.55));
+  const eyeMat = M(look.eye, { roughness: 0.2 }), white = M('#ffffff', { roughness: 0.3 }), blush = M('#ff9ebf');
+  const gold = () => M('#ffd04d', { metalness: 0.5, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 });
+
+  const rig = new THREE.Group();
+  const body = mesh(UG.body, coat, 0, 1.3, 0); body.rotation.x = Math.PI / 2; rig.add(body);
+
+  // Muster
+  if (look.pattern === 1) {
+    [[0.9, 0.3], [-0.8, 0.45], [0.4, -0.35], [-0.5, -0.5], [1.5, -0.1], [-1.4, 0.1], [0.0, 0.05], [1.1, -0.6], [-1.1, -0.2]].forEach(([a, z], i) =>
+      rig.add(sph(mane(i), 0.12 + (i % 3) * 0.025, Math.sin(a) * 0.4, 1.3 + Math.cos(a) * 0.4, z)));
+  }
+
+  // Beine
+  const legs = [];
+  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+    const leg = new THREE.Group(); leg.position.set(sx * 0.27, 1.0, sz * 0.55);
+    leg.add(mesh(UG.leg, coat, 0, -0.41, 0), mesh(UG.hoof, hoofMat, 0, -0.9, 0));
+    if (look.pattern === 2) { const sock = mesh(UG.cyl, mane(0), 0, -0.66, 0); sock.scale.set(0.162, 0.3, 0.162); leg.add(sock); }
+    rig.add(leg); legs.push(leg);
+  }
+
+  // Hals & Kopf
+  const neck = new THREE.Group(); neck.position.set(0, 1.5, 0.6); rig.add(neck);
+  const neckMesh = mesh(UG.neck, coat, 0, 0.36, 0.16); neckMesh.rotation.x = 0.43; neck.add(neckMesh);
+  const head = new THREE.Group(); head.position.set(0, 0.86, 0.45); head.scale.setScalar(1.22); neck.add(head);
+  head.add(sph(coat, 0.32, 0, 0, 0, 1, 0.95, 1.1));
+  const snout = mesh(UG.snout, coat, 0, -0.1, 0.32); snout.rotation.x = Math.PI / 2 + 0.35; head.add(snout);
+  head.add(sph(muzzle, 0.17, 0, -0.17, 0.5, 1, 0.82, 0.85));
+  const eyes = [];
+  for (const s of [-1, 1]) {
+    const e = sph(eyeMat, 0.078, s * 0.245, 0.06, 0.17); e.userData.r = 0.078; eyes.push(e); head.add(e);
+    head.add(sph(white, 0.026, s * 0.285, 0.1, 0.21));
+    head.add(sph(blush, 0.07, s * 0.255, -0.09, 0.27, 0.5, 0.8, 1));
+    const ear = mesh(UG.cone, coat, s * 0.17, 0.32, -0.06); ear.scale.set(0.09, 0.26, 0.07); ear.rotation.z = -s * 0.3; head.add(ear);
+  }
+  const horn = mesh(UG.horn, hornMat, 0, 0.5, 0.22); horn.rotation.x = 0.4; head.add(horn);
+
+  // Mähne
+  const a = new V3(0, 1.0, 0.14), b = new V3(0, -0.02, -0.3), p = new V3();
+  if (look.maneStyle === 1) {          // stachelig
+    for (let i = 0; i < 8; i++) {
+      p.lerpVectors(a, b, i / 7);
+      const c = mesh(UG.cone, mane(i), 0, p.y + 0.05, p.z - 0.08); c.scale.set(0.13, 0.46, 0.13); c.rotation.x = -1.05; neck.add(c);
+    }
+    const f = mesh(UG.cone, mane(0), 0, 0.36, -0.02); f.scale.set(0.12, 0.34, 0.12); f.rotation.x = -0.5; head.add(f);
+  } else if (look.maneStyle === 2) {   // lockig
+    for (let i = 0; i < 10; i++) {
+      p.lerpVectors(a, b, i / 9);
+      neck.add(sph(mane(i), 0.14, (i % 2 ? 0.12 : -0.12), p.y, p.z));
+      neck.add(sph(mane(i + 1), 0.12, (i % 2 ? -0.08 : 0.08), p.y - 0.05, p.z - 0.07));
+    }
+    head.add(sph(mane(0), 0.13, 0.08, 0.29, 0.02), sph(mane(1), 0.12, -0.09, 0.27, 0.05));
+  } else {                             // wallend
+    for (let i = 0; i < 7; i++) {
+      p.lerpVectors(a, b, i / 6);
+      const r = 0.2 + 0.04 * Math.sin(i / 6 * Math.PI);
+      neck.add(sph(mane(i), r, 0, p.y, p.z, 0.75, 1, 1));
+      neck.add(sph(mane(i + 1), r * 0.8, 0.15, p.y - 0.1, p.z - 0.02));
+    }
+    head.add(sph(mane(0), 0.15, 0, 0.29, 0.02, 1, 0.9, 1.1));
+  }
+
+  // Schweif
+  const tail = new THREE.Group(); tail.position.set(0, 1.5, -0.85); rig.add(tail);
+  for (let i = 0; i < 5; i++) {
+    const off = look.maneStyle === 2 ? (i % 2 ? 0.07 : -0.07) : 0;
+    tail.add(sph(mane(i), 0.2 - 0.02 * i, off, -0.2 * i - 0.02 * i * i, -0.1 - 0.13 * i));
+  }
+
+  // Flügel
+  let wings = null;
+  if (look.wings) {
+    wings = [];
+    const wm = M(new THREE.Color(look.mane[0]).lerp(new THREE.Color('#ffffff'), 0.65), { roughness: 0.5 });
+    for (const s of [-1, 1]) {
+      const w = new THREE.Group(); w.position.set(s * 0.36, 1.62, 0.08);
+      for (let i = 0; i < 5; i++) { const f = sph(wm, 1, s * (0.5 - 0.05 * i), 0.02 * i, 0.1 - 0.15 * i, 0.62 - 0.08 * i, 0.045, 0.15); f.rotation.y = s * (0.1 + 0.2 * i); w.add(f); }
+      rig.add(w); wings.push(w);
+    }
+  }
+
+  // Accessoires
+  if (acc.has('crown')) {
+    const g = new THREE.Group(); g.position.set(0, 0.33, -0.07); const gm = gold(); gm.side = THREE.DoubleSide;
+    g.add(mesh(UG.band, gm));
+    for (let i = 0; i < 5; i++) { const an = i / 5 * TAU; const c = mesh(UG.cone, gm, Math.sin(an) * 0.125, 0.09, Math.cos(an) * 0.125); c.scale.set(0.035, 0.1, 0.035); g.add(c); }
+    g.add(sph(M('#ff4f8b', { emissive: '#ff4f8b', emissiveIntensity: 0.4 }), 0.03, 0, 0.0, 0.135));
+    head.add(g);
+  }
+  if (acc.has('hat')) {
+    const g = new THREE.Group(); g.position.set(0, 0.29, -0.09); g.rotation.x = -0.22; const hm = M('#7b4bd6');
+    const brim = mesh(UG.cyl, hm); brim.scale.set(0.3, 0.03, 0.3);
+    const top = mesh(UG.cone, hm, 0, 0.27, 0); top.scale.set(0.2, 0.52, 0.2);
+    const band = mesh(UG.cyl, gold(), 0, 0.05, 0); band.scale.set(0.2, 0.05, 0.2);
+    g.add(brim, top, band, sph(gold(), 0.045, 0, 0.54, 0)); head.add(g);
+  }
+  if (acc.has('wreath')) {
+    const g = new THREE.Group(); g.position.set(0, 0.26, -0.04); g.rotation.x = -0.15;
+    for (let i = 0; i < 11; i++) { const an = i / 11 * TAU; g.add(sph(M(FLOWER_COLS[i % FLOWER_COLS.length]), 0.075, Math.sin(an) * 0.25, 0, Math.cos(an) * 0.25)); }
+    head.add(g);
+  }
+  if (acc.has('scarf')) {
+    const sm = M('#ff5f7e'), t = mesh(UG.torus, sm, 0, 0.4, 0.18); t.scale.set(0.27, 0.27, 0.3); t.rotation.x = -1.14;
+    const end = mesh(UG.box, sm, 0.13, 0.14, 0.4); end.scale.set(0.14, 0.42, 0.05); end.rotation.x = 0.3;
+    neck.add(t, end);
+  }
+  if (acc.has('bell')) {
+    const t = mesh(UG.torus, M('#e0457b'), 0, 0.22, 0.1); t.scale.set(0.275, 0.275, 0.13); t.rotation.x = -1.14;
+    neck.add(t, sph(gold(), 0.085, 0, 0.1, 0.4));
+  }
+  if (acc.has('saddle')) {
+    rig.add(sph(M('#c85c98'), 0.5, 0, 1.3, -0.05, 1.06, 1.06, 0.55));
+    rig.add(sph(M('#8a3f73'), 0.27, 0, 1.8, -0.05, 1, 0.3, 1.2));
+    rig.add(sph(gold(), 0.05, 0, 1.86, 0.2));
+  }
+  if (acc.has('bow')) {
+    const bm = M('#ff5fa2');
+    for (const s of [-1, 1]) { const c = mesh(UG.cone, bm, s * 0.13, 0.02, -0.05); c.scale.set(0.13, 0.26, 0.09); c.rotation.z = s * Math.PI / 2; tail.add(c); }
+    tail.add(sph(bm, 0.06, 0, 0.02, -0.05));
+  }
+  if (acc.has('glasses')) {
+    const gm = M('#2a2440', { roughness: 0.15, metalness: 0.4 });
+    for (const s of [-1, 1]) { const l = sph(gm, 0.11, s * 0.27, 0.07, 0.19, 0.35, 1, 1); l.rotation.y = s * 0.35; head.add(l); }
+    const br = mesh(UG.box, gm, 0, 0.1, 0.3); br.scale.set(0.5, 0.03, 0.12); head.add(br);
+  }
+  return { rig, legs, neck, head, tail, wings, eyes, hornMat, mats };
+}
+
+/* ───────────────────────── Aussehen: Paletten & Zufall ───────────────────────── */
+const COATS = ['#ffffff', '#fff1e3', '#ffd9ec', '#ffc2d9', '#e6d4ff', '#cdb8ff', '#c9ecff', '#a9e4f5', '#c8f5dd', '#fff6b8', '#ffd7b0', '#b9b4c9', '#5d5470', '#2b2540'];
+const MANES = [
+  { n: 'Regenbogen', c: RAINBOW }, { n: 'Zuckerwatte', c: ['#ff9ecf', '#9fdcff', '#ffffff'] }, { n: 'Meer', c: ['#3fd0c9', '#5c9dff', '#b0f0ff'] },
+  { n: 'Sonnenuntergang', c: ['#ff5f7e', '#ff9a5c', '#ffd36b'] }, { n: 'Sternennacht', c: ['#3a2f8f', '#7b5cd6', '#ffd86b'] },
+  { n: 'Rosa', c: ['#ff7fb8'] }, { n: 'Lila', c: ['#a070ff'] }, { n: 'Türkis', c: ['#38d6c4'] }, { n: 'Gold', c: ['#ffcc44'] }, { n: 'Schnee', c: ['#ffffff'] }, { n: 'Rabe', c: ['#2b2540'] },
+];
+const HORNS = ['#ffd86b', '#ffffff', '#ff9ecf', '#9fe8ff', '#c9a6ff', '#b8ffd0'];
+const EYES = ['#3b2a6e', '#1f6fd6', '#2f9d6b', '#8a4b2a', '#c2408a', '#222222'];
+const STYLES = ['Wallend', 'Stachelig', 'Lockig'], PATTERNS = ['Keins', 'Punkte', 'Söckchen'];
+const NAMES = ['Sternchen', 'Luna', 'Flöckchen', 'Glitzer', 'Morgentau', 'Zuckerwatte', 'Funkel', 'Nebelglanz', 'Rosalie', 'Mondschein', 'Wolke', 'Sonnentau', 'Lilly', 'Fee', 'Aurora',
+  'Bonbon', 'Pfirsich', 'Karamell', 'Schneeflocke', 'Tautropfen', 'Veilchen', 'Krümel', 'Zimt', 'Stella', 'Mira', 'Polly', 'Nimbus', 'Saphir', 'Opal', 'Perle', 'Blümchen', 'Lavendel', 'Honig', 'Komet', 'Wirbelwind', 'Pusteblume'];
+function randomName() { const used = new Set(unicorns.map(u => u.name)); const free = NAMES.filter(n => !used.has(n)); return pick(free.length ? free : NAMES); }
+function randomLook() {
+  return {
+    coat: Math.random() < 0.75 ? pick(COATS.slice(0, 11)) : pick(COATS), mane: [...pick(MANES).c], horn: pick(HORNS), eye: pick(EYES),
+    maneStyle: Math.floor(Math.random() * 3), pattern: pick([0, 0, 0, 1, 2]), wings: Math.random() < 0.3, size: +rand(0.88, 1.15).toFixed(2),
+  };
+}
+function mixLooks(A, B) {
+  const coat = '#' + new THREE.Color(A.coat).lerp(new THREE.Color(B.coat), rand(0.3, 0.7)).getHexString();
+  const pool = [...A.mane, ...B.mane].sort(() => Math.random() - 0.5);
+  return {
+    coat, mane: pool.slice(0, clamp(Math.round((A.mane.length + B.mane.length) / 2), 1, 6)), horn: pick([A.horn, B.horn]), eye: pick([A.eye, B.eye]),
+    maneStyle: pick([A.maneStyle, B.maneStyle]), pattern: pick([A.pattern, B.pattern]), wings: (A.wings || B.wings) && Math.random() < 0.6,
+    size: +clamp((A.size + B.size) / 2 + rand(-0.06, 0.06), 0.8, 1.25).toFixed(2),
+  };
+}
+
+/* ───────────────────────── Welt-Zustand ───────────────────────── */
+const world = { time: 0.08, dayness: 1, night: false, ffTarget: null };
+const unicorns = [], paddocks = [], decos = [], foods = [];
+const friends = new Map();
+let nextId = 1, nextPid = 1, birthCd = 40;
+let selected = null, follow = false;
+const friendKey = (a, b) => a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+
+const paddockAt = (x, z) => paddocks.find(p => x > p.x0 && x < p.x1 && z > p.z0 && z < p.z1) || null;
+const regionId = (x, z) => paddockAt(x, z)?.id ?? null;
+
+const FOODS = {
+  apple: { name: 'Apfel', icon: '🍎', sat: 25, joy: 4 },
+  carrot: { name: 'Karotte', icon: '🥕', sat: 22, joy: 4 },
+  hay: { name: 'Heu', icon: '🌾', sat: 45, joy: 1 },
+  cake: { name: 'Regenbogenkuchen', icon: '🍰', sat: 30, joy: 22 },
+};
+const DECOS = {
+  flowers: { name: 'Blumen', icon: '🌷' }, tree: { name: 'Baum', icon: '🌳' }, blossom: { name: 'Blütenbaum', icon: '🌸' },
+  mushroom: { name: 'Riesenpilz', icon: '🍄' }, lantern: { name: 'Laterne', icon: '🏮' },
+};
+
+function toast(msg, ms = 3200) {
+  const el = document.createElement('div'); el.className = 'toast glass'; el.textContent = msg; $('#toasts').append(el);
+  setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 500); }, ms);
+}
+
+/* ───────────────────────── Einhorn ───────────────────────── */
+const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+const tagsEl = $('#tags');
+
+class Unicorn {
+  constructor(d) {
+    this.id = d.id ?? nextId; nextId = Math.max(nextId, this.id + 1);
+    this.name = d.name; this.look = d.look; this.acc = new Set(d.acc || []);
+    this.sat = d.sat ?? rand(55, 85); this.energy = d.energy ?? rand(70, 100); this.joy = d.joy ?? rand(60, 80);
+    this.age = d.age ?? ADULT; this.paddock = d.paddock ?? null;
+    this.root = new THREE.Group(); this.root.position.set(d.x, heightAt(d.x, d.z), d.z);
+    this.heading = rand(0, TAU); this.root.rotation.y = this.heading;
+    this.hit = new THREE.Mesh(UG.hit, hitMat); this.hit.position.y = 1.5; this.hit.userData.unicorn = this; this.root.add(this.hit);
+    this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); this.bubble.position.y = 3.3; this.bubble.scale.setScalar(0.8); this.bubble.visible = false;
+    this.root.add(this.bubble); this.bubbleKey = '';
+    this.tag = document.createElement('div'); this.tag.className = 'tag'; this.tag.textContent = this.name; tagsEl.append(this.tag);
+    scene.add(this.root);
+    this.state = 'idle'; this.timer = rand(0.5, 3); this.target = new V3(); this.goal = null; this.speed = 0; this.arriveR = 0.5;
+    this.phase = rand(0, 6); this.seed = rand(0, 100); this.amp = 0; this.lie = 0; this.neckX = 0; this.tailX = 0;
+    this.jumpT = 0; this.jumpDur = 1; this.jumpH = 0; this.socialCd = rand(8, 25); this.partner = null; this.waitingFor = null; this.lead = false;
+    this.food = null; this.pendingFood = null; this.walkTime = 0; this.fxT = 0; this.petCd = 0; this.aheadRegion = null; this.dead = false;
+    this.build();
+  }
+  get x() { return this.root.position.x; }
+  get z() { return this.root.position.z; }
+  scale() { return this.look.size * (this.age < ADULT ? 0.5 + 0.5 * this.age / ADULT : 1); }
+  isFoal() { return this.age < ADULT; }
+  build() {
+    if (this.parts) { this.root.remove(this.parts.rig); this.parts.mats.forEach(m => m.dispose()); }
+    this.parts = buildUnicornModel(this.look, this.acc);
+    this.root.add(this.parts.rig);
+  }
+  headPos(out = new V3()) { const s = this.scale(); return out.set(this.x + Math.sin(this.heading) * 0.9 * s, this.root.position.y + (2.9 - 1.1 * this.lie) * s, this.z + Math.cos(this.heading) * 0.9 * s); }
+  emote(ch) { spawnP(emojiTex(ch), this.headPos(), { vel: new V3(rand(-0.3, 0.3), 1.1, rand(-0.3, 0.3)), life: 1.7, size: 0.75 }); }
+  faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
+  jump(dur, h) { if (this.jumpT <= 0) { this.jumpT = this.jumpDur = dur; this.jumpH = h; } }
+
+  setIdle(t = rand(1, 4)) {
+    if (this.goal === 'cmd') this.paddock = regionId(this.x, this.z);
+    if (this.food && this.food.claimed === this) this.food.claimed = null;
+    if (this.partner && this.partner.waitingFor === this) this.partner.waitingFor = null;
+    this.food = null; this.pendingFood = null; this.partner = null; this.waitingFor = null; this.goal = null; this.lead = false;
+    this.state = 'idle'; this.timer = t; this.speed = 0;
+  }
+  walkTo(x, z, goal, speed, arriveR = 0.5) {
+    this.target.set(x, 0, z); this.goal = goal; this.speed = speed; this.arriveR = arriveR; this.state = 'walk'; this.walkTime = 0;
+  }
+  command(x, z) {
+    this.setIdle(0);
+    this.aheadRegion = regionId(this.x, this.z);
+    this.walkTo(x, z, 'cmd', 4.6);
+  }
+  pet() {
+    if (this.petCd > 0) return; this.petCd = 0.6;
+    if (this.state === 'sleep') this.setIdle(2);
+    this.joy = clamp(this.joy + 12, 0, 100);
+    for (let i = 0; i < 3; i++) setTimeout(() => !this.dead && this.emote('💗'), i * 160);
+    this.jump(0.45, 0.45); chime([784, 988]);
+  }
+  feed(type) {
+    this.setIdle(0); this.state = 'eat'; this.timer = 1.8; this.pendingFood = type;
+  }
+  magic() {
+    if (this.energy < 15) { toast(`${this.name} ist zu müde zum Zaubern 💤`); return; }
+    this.setIdle(0); this.state = 'magic'; this.timer = 1.6; this.energy -= 12; this.joy = clamp(this.joy + 8, 0, 100);
+    chime([523, 659, 784, 1047, 1319], 0.08);
+    setTimeout(() => {
+      if (this.dead) return;
+      sparkleBurst(this.headPos(), 40, 4.5);
+      for (const o of unicorns) if (o !== this && Math.hypot(o.x - this.x, o.z - this.z) < 14) { o.joy = clamp(o.joy + 12, 0, 100); o.emote('🌈'); }
+    }, 500);
+  }
+
+  decide() {
+    if (this.energy < 18 || (world.night && this.energy < 75 && Math.random() < 0.6)) { this.state = 'sleep'; this.timer = 0; return; }
+    if (this.sat < 65) {
+      let best = null, bd = 45;
+      for (const f of foods) { if (f.claimed || regionId(f.x, f.z) !== this.paddock) continue; const d = Math.hypot(f.x - this.x, f.z - this.z); if (d < bd) { bd = d; best = f; } }
+      if (best) { best.claimed = this; this.food = best; this.walkTo(best.x, best.z, 'food', 3.2, 1.15 * this.scale()); return; }
+    }
+    if (this.sat < 30) { this.state = 'graze'; this.timer = 4; return; }
+    if (this.socialCd <= 0 && Math.random() < 0.45) {
+      let best = null, bd = 30;
+      for (const o of unicorns) {
+        if (o === this || o.paddock !== this.paddock || o.socialCd > 0 || o.waitingFor) continue;
+        if (!(o.state === 'idle' || (o.state === 'walk' && o.goal === 'wander'))) continue;
+        const d = Math.hypot(o.x - this.x, o.z - this.z); if (d < bd) { bd = d; best = o; }
+      }
+      if (best) { best.setIdle(14); best.waitingFor = this; this.partner = best; this.walkTo(best.x, best.z, 'meet', 3); return; }
+    }
+    if (Math.random() < 0.22) { this.timer = rand(1, 3); return; }
+    const t = this.randomTarget();
+    if (t) this.walkTo(t.x, t.z, 'wander', this.joy > 70 && this.energy > 40 && Math.random() < 0.3 ? 5.2 : (this.joy < 30 ? 1.3 : 2.1));
+    else this.timer = 1;
+  }
+  randomTarget() {
+    const pd = paddocks.find(p => p.id === this.paddock);
+    for (let i = 0; i < 14; i++) {
+      let x, z;
+      if (pd) { x = rand(pd.x0 + 1, pd.x1 - 1); z = rand(pd.z0 + 1, pd.z1 - 1); }
+      else {
+        const a = rand(0, TAU), r = rand(4, 22); x = this.x + Math.cos(a) * r; z = this.z + Math.sin(a) * r;
+        if (Math.hypot(x, z) > WORLD_R - 3 || paddockAt(x, z)) continue;
+      }
+      if (isWater(x, z, 0.5) || nearObstacle(x, z, 1.4)) continue;
+      return { x, z };
+    }
+    return null;
+  }
+  step(dt) {
+    const p = this.root.position;
+    let dx = this.target.x - p.x, dz = this.target.z - p.z; const d = Math.hypot(dx, dz);
+    if (d < this.arriveR) return 'arrived';
+    dx /= d; dz /= d;
+    forObstaclesNear(p.x, p.z, o => {
+      const ox = p.x - o.x, oz = p.z - o.z, od = Math.hypot(ox, oz), rr = o.r + 1.1;
+      if (od < rr && od > 0.001) { const k = (rr - od) / rr * 2.4; dx += ox / od * k; dz += oz / od * k; }
+    });
+    for (const o of unicorns) {
+      if (o === this || o === this.partner) continue;
+      const ox = p.x - o.x, oz = p.z - o.z, od = Math.hypot(ox, oz);
+      if (od < 1.5 && od > 0.001) { dx += ox / od * 0.8; dz += oz / od * 0.8; }
+    }
+    const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+    const sp = this.speed * (0.55 + 0.45 * this.scale()), nx = p.x + dx * sp * dt, nz = p.z + dz * sp * dt;
+    if (isWater(nx, nz) || Math.hypot(nx, nz) > WORLD_R) return 'blocked';
+    if (this.goal === 'cmd') {
+      const ar = regionId(p.x + dx * 1.4, p.z + dz * 1.4);
+      if (ar !== this.aheadRegion) { this.aheadRegion = ar; this.jump(0.75, 1.7); }
+    } else if (regionId(nx, nz) !== this.paddock) return 'blocked';
+    p.x = nx; p.z = nz; this.heading = Math.atan2(dx, dz); this.phase += dt * sp * 2.7 / this.scale();
+    return 'moving';
+  }
+
+  update(dt, t) {
+    const asleep = this.state === 'sleep';
+    this.age += dt; this.socialCd -= dt; this.petCd -= dt; this.fxT -= dt;
+    if (!asleep) { this.sat = Math.max(0, this.sat - dt * 0.28); this.energy = Math.max(0, this.energy - dt * 0.15); }
+    let jr = -0.1; if (this.sat < 20) jr -= 0.25; if (this.energy < 15) jr -= 0.1; if (this.acc.size) jr += 0.03;
+    this.joy = clamp(this.joy + jr * dt, 0, 100);
+    let moving = false;
+
+    switch (this.state) {
+      case 'idle':
+        this.timer -= dt;
+        if (this.waitingFor) this.faceTo(this.waitingFor.x, this.waitingFor.z);
+        if (this.timer <= 0) { this.waitingFor = null; this.decide(); }
+        break;
+      case 'walk': {
+        this.walkTime += dt;
+        if (this.goal === 'meet') {
+          const o = this.partner;
+          if (!o || o.dead || o.waitingFor !== this) { this.setIdle(1); break; }
+          this.target.set(o.x, 0, o.z);
+          if (Math.hypot(o.x - this.x, o.z - this.z) < 1.1 * (this.scale() + o.scale())) { startSocial(this, o); break; }
+        }
+        if (this.goal === 'food' && (!this.food || this.food.gone)) { this.setIdle(0.5); break; }
+        const res = this.step(dt); moving = res === 'moving';
+        if (res === 'arrived') {
+          if (this.goal === 'food') { this.state = 'eat'; this.timer = 2.2; this.faceTo(this.food.x, this.food.z); }
+          else if (this.goal === 'cmd') this.setIdle(2);
+          else this.setIdle();
+        } else if (res === 'blocked' || this.walkTime > 26) this.setIdle(0.4);
+        if (moving && this.speed > 4 && this.fxT <= 0 && this.joy > 60) {
+          this.fxT = 0.07;
+          spawnP(glowTex, _v.set(this.x - Math.sin(this.heading) * 1.2, this.root.position.y + rand(0.8, 1.7) * this.scale(), this.z - Math.cos(this.heading) * 1.2),
+            { life: 0.8, size: 0.5, color: RAINBOW[Math.floor(t * 9) % 6], add: true, grow: 0.5 });
+        }
+        break;
+      }
+      case 'eat':
+        this.timer -= dt;
+        if (this.food && this.food.gone) { this.setIdle(0.5); break; }
+        if (this.timer <= 0) {
+          const type = this.food ? this.food.type : this.pendingFood, f = FOODS[type];
+          if (f) { this.sat = clamp(this.sat + f.sat, 0, 100); this.joy = clamp(this.joy + f.joy, 0, 100); this.emote(type === 'cake' ? '😍' : '😋'); chime([660, 880]); }
+          if (this.food) removeFood(this.food);
+          this.setIdle(1.2);
+        }
+        break;
+      case 'graze':
+        this.timer -= dt; this.sat = clamp(this.sat + dt * 4, 0, 100);
+        if (this.timer <= 0) this.setIdle(1);
+        break;
+      case 'sleep':
+        this.energy = Math.min(100, this.energy + dt * (world.night ? 1.6 : 5));
+        this.timer -= dt; if (this.timer <= 0) { this.timer = 1.8; this.emote('💤'); }
+        if (this.energy >= 100) { this.setIdle(1.5); this.emote('☀️'); }
+        break;
+      case 'social': {
+        const o = this.partner;
+        if (!o || o.dead || o.state !== 'social' || o.partner !== this) { this.setIdle(1); break; }
+        this.faceTo(o.x, o.z); this.timer -= dt; this.joy = clamp(this.joy + dt * 5, 0, 100);
+        if (this.fxT <= 0) { this.fxT = rand(0.6, 1.1); this.emote(pick(['💗', '💕', '🎵', '✨'])); }
+        if (this.timer <= 0 && this.lead) finishSocial(this, o);
+        break;
+      }
+      case 'magic':
+        this.timer -= dt;
+        if (this.fxT <= 0) { this.fxT = 0.05; spawnP(glowTex, this.headPos(), { vel: new V3(rand(-1, 1), rand(0.5, 2), rand(-1, 1)), life: 0.9, size: 0.4, color: pick(RAINBOW), add: true }); }
+        if (this.timer <= 0) this.setIdle(1);
+        break;
+    }
+    if (this.acc.has('glitter') && this.fxT <= 0) {
+      this.fxT = 0.16; const s = this.scale();
+      spawnP(glowTex, _v.set(this.x + rand(-0.8, 0.8) * s, this.root.position.y + rand(0.4, 2.4) * s, this.z + rand(-0.8, 0.8) * s), { vel: new V3(0, 0.4, 0), life: 1, size: 0.3, color: pick(RAINBOW), add: true });
+    }
+    this.animate(dt, t, moving);
+    this.updateBubble();
+  }
+
+  animate(dt, t, moving) {
+    const P = this.parts, k = a => Math.min(1, dt * a);
+    this.root.scale.setScalar(this.scale());
+    this.root.rotation.y = lerpAngle(this.root.rotation.y, this.heading, k(7));
+    const p = this.root.position;
+    let jy = 0;
+    if (this.jumpT > 0) { this.jumpT -= dt; jy = Math.sin(Math.PI * (1 - Math.max(0, this.jumpT) / this.jumpDur)) * this.jumpH; }
+    p.y = heightAt(p.x, p.z) + jy;
+    this.lie += ((this.state === 'sleep' ? 1 : 0) - this.lie) * k(3);
+    this.amp += ((moving ? (this.speed > 3.5 ? 0.85 : 0.55) : 0) - this.amp) * k(8);
+    const offs = [0, Math.PI, Math.PI, 0], tuck = Math.min(1, jy);
+    P.legs.forEach((l, i) => { l.rotation.x = Math.sin(this.phase + offs[i]) * this.amp + (i < 2 ? -0.6 : 0.6) * tuck; l.scale.y = 1 - 0.62 * this.lie; });
+    P.rig.position.y = -0.6 * this.lie + (moving ? Math.abs(Math.sin(this.phase)) * 0.06 : Math.sin(t * 2 + this.seed) * 0.012);
+    let nx = Math.sin(t * 1.1 + this.seed) * 0.06, ny = 0;
+    if (this.state === 'eat' || this.state === 'graze') nx = 1.7 + Math.sin(t * 9) * 0.07;
+    else if (this.state === 'sleep') nx = 1.15;
+    else if (this.state === 'social') nx = Math.sin(t * 4 + this.seed) * 0.2;
+    else if (this.state === 'magic') nx = -0.35;
+    else if (this.state === 'idle') ny = Math.sin(t * 0.6 + this.seed) * 0.3;
+    this.neckX += (nx - this.neckX) * k(5); P.neck.rotation.x = this.neckX;
+    P.neck.rotation.y += (ny - P.neck.rotation.y) * k(3);
+    this.tailX += ((moving ? 0.6 : 0) - this.tailX) * k(4);
+    P.tail.rotation.x = this.tailX; P.tail.rotation.y = Math.sin(t * 2.3 + this.seed) * 0.35;
+    const rear = this.state === 'magic' ? -Math.sin(Math.PI * clamp(1 - this.timer / 1.6, 0, 1)) * 0.45 : 0;
+    P.rig.rotation.x += (rear - P.rig.rotation.x) * k(10);
+    if (P.wings) { const f = 0.6 + Math.sin(t * (moving || jy > 0 ? 11 : 2.5) + this.seed) * (moving || jy > 0 ? 0.45 : 0.12); P.wings[0].rotation.z = -f; P.wings[1].rotation.z = f; }
+    const ey = this.state === 'sleep' ? 0.12 : ((t + this.seed) % 4.2 < 0.13 ? 0.1 : 1);
+    P.eyes.forEach(e => e.scale.y = e.userData.r * ey);
+    P.hornMat.emissiveIntensity = 0.3 + (1 - world.dayness) * 1.3 + (this.state === 'magic' ? 2 : 0);
+  }
+  updateBubble() {
+    const key = this.state === 'sleep' ? '' : this.sat < 25 ? '🍎' : this.energy < 18 ? '🥱' : this.joy < 25 ? '🥺' : '';
+    if (key !== this.bubbleKey) { this.bubbleKey = key; this.bubble.visible = !!key; if (key) { this.bubble.material.map = emojiTex(key); this.bubble.material.needsUpdate = true; } }
+  }
+  mood() {
+    if (this.state === 'sleep') return 'schläft tief und fest 💤';
+    if (this.state === 'social') return `spielt mit ${this.partner?.name ?? 'jemandem'} 💕`;
+    if (this.state === 'eat' || this.state === 'graze') return 'frisst gerade 😋';
+    if (this.sat < 25) return 'hat großen Hunger 🍎';
+    if (this.energy < 20) return 'ist sehr müde 🥱';
+    if (this.joy < 25) return 'ist traurig 🥺 – streichle es!';
+    if (this.joy > 80) return 'ist überglücklich 🌈';
+    return 'ist zufrieden 😊';
+  }
+  toJSON() { return { id: this.id, name: this.name, look: this.look, acc: [...this.acc], sat: this.sat, energy: this.energy, joy: this.joy, age: this.age, paddock: this.paddock, x: this.x, z: this.z }; }
+  destroy() {
+    this.setIdle(0); this.dead = true; scene.remove(this.root); this.parts.mats.forEach(m => m.dispose()); this.bubble.material.dispose(); this.tag.remove();
+    const i = unicorns.indexOf(this); if (i >= 0) unicorns.splice(i, 1);
+  }
+}
+
+function startSocial(a, b) {
+  for (const u of [a, b]) { u.state = 'social'; u.timer = 5.5; u.goal = null; u.waitingFor = null; u.speed = 0; }
+  a.partner = b; b.partner = a; a.lead = true; b.lead = false;
+}
+function finishSocial(a, b) {
+  const key = friendKey(a, b), n = (friends.get(key) || 0) + 1; friends.set(key, n);
+  if (n === 2) toast(`💞 ${a.name} und ${b.name} sind jetzt Freunde!`);
+  const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, pid = a.paddock;
+  if (n >= 2 && !a.isFoal() && !b.isFoal() && a.joy > 65 && b.joy > 65 && birthCd <= 0 && unicorns.length < MAX_UNICORNS && Math.random() < 0.55) {
+    birthCd = 100;
+    const foal = addUnicorn({ name: randomName(), look: mixLooks(a.look, b.look), x: mx, z: mz, age: 0, paddock: pid, joy: 90, sat: 80, energy: 100 }, true);
+    toast(`🍼 Ein Fohlen ist da: ${foal.name}! (Eltern: ${a.name} & ${b.name})`, 5000);
+    chime([523, 659, 784, 1047, 784, 1047], 0.11);
+  }
+  a.setIdle(rand(1, 3)); b.setIdle(rand(1, 3));
+  a.socialCd = rand(25, 50); b.socialCd = rand(25, 50);
+}
+
+function addUnicorn(d, fx = false) {
+  const u = new Unicorn(d); unicorns.push(u);
+  if (fx) { sparkleBurst(_v.set(u.x, u.root.position.y + 1.5, u.z), 36, 4); u.jump(0.6, 0.8); }
+  updateStats(); return u;
+}
+function spawnSpot() {
+  for (let i = 0; i < 30; i++) {
+    const a = rand(0, TAU), r = rand(1, 7), x = controls.target.x + Math.cos(a) * r, z = controls.target.z + Math.sin(a) * r;
+    if (Math.hypot(x, z) < WORLD_R - 2 && !isWater(x, z, 0.5) && !nearObstacle(x, z, 1.2)) return { x, z };
+  }
+  return { x: rand(-5, 5), z: rand(-5, 5) };
+}
+function createUnicorn(name, look) {
+  if (unicorns.length >= MAX_UNICORNS) { toast(`Der Zoo ist voll (${MAX_UNICORNS} Einhörner) 🦄`); return null; }
+  const s = spawnSpot();
+  const u = addUnicorn({ name, look, x: s.x, z: s.z, paddock: regionId(s.x, s.z) }, true);
+  chime([523, 659, 784, 1047]); toast(`✨ ${name} ist im Zoo angekommen!`);
+  select(u); save(); return u;
+}
+
+/* ───────────────────────── Futter ───────────────────────── */
+function buildFood(type) {
+  const g = new THREE.Group(), L = c => new THREE.MeshLambertMaterial({ color: c });
+  const add = (geo, c, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(geo, L(c)); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; g.add(m); return m; };
+  if (type === 'apple') { add(UG.sph, '#ff4f5e', 0, 0.24, 0, 0.24, 0.22, 0.24); add(UG.cyl, '#7a5230', 0, 0.5, 0, 0.02, 0.12, 0.02); add(UG.sph, '#5fbf5a', 0.07, 0.52, 0, 0.09, 0.02, 0.05); }
+  else if (type === 'carrot') { const c = add(UG.cone, '#ff9a3c', 0, 0.14, 0, 0.11, 0.55, 0.11); c.rotation.z = 1.35; add(UG.sph, '#5fbf5a', -0.3, 0.2, 0, 0.12, 0.1, 0.1); }
+  else if (type === 'hay') { const h = add(UG.cyl, '#f0d264', 0, 0.36, 0, 0.36, 0.5, 0.36); h.rotation.z = Math.PI / 2; add(UG.cyl, '#d9b84a', 0, 0.36, 0, 0.37, 0.06, 0.37).rotation.z = Math.PI / 2; }
+  else { ['#ff8fc3', '#ffe14d', '#8fd3ff'].forEach((c, i) => add(UG.cyl, c, 0, 0.08 + i * 0.13, 0, 0.3 - i * 0.03, 0.13, 0.3 - i * 0.03)); add(UG.sph, '#ffffff', 0, 0.45, 0, 0.2, 0.06, 0.2); add(UG.sph, '#ff3f6e', 0, 0.52, 0, 0.07, 0.07, 0.07); }
+  return g;
+}
+function placeFood(type, x, z) {
+  if (isWater(x, z)) { toast('Im Wasser wird das Futter nass 💦'); return; }
+  if (foods.length >= 30) removeFood(foods[0]);
+  const mesh = buildFood(type); mesh.position.set(x, heightAt(x, z), z); mesh.rotation.y = rand(0, TAU);
+  const f = { type, x, z, mesh, claimed: null, gone: false }; mesh.userData = { kind: 'food', ref: f };
+  scene.add(mesh); foods.push(f); chime([440]);
+  // hungrige, untätige Einhörner sofort aufmerksam machen
+  for (const u of unicorns) if (u.state === 'idle' && !u.waitingFor && u.sat < 65) u.timer = Math.min(u.timer, 0.3);
+}
+function removeFood(f) { f.gone = true; scene.remove(f.mesh); const i = foods.indexOf(f); if (i >= 0) foods.splice(i, 1); }
+
+/* ───────────────────────── Koppeln ───────────────────────── */
+const fenceMat = new THREE.MeshLambertMaterial({ color: '#fff4e6' }), fenceTop = new THREE.MeshLambertMaterial({ color: '#ff8fc3' });
+const postGeo = new THREE.CylinderGeometry(0.1, 0.12, 1, 8);
+function buildPaddockMesh(pd) {
+  const g = new THREE.Group(), pts = [], step = 2.2;
+  const cs = [[pd.x0, pd.z0], [pd.x1, pd.z0], [pd.x1, pd.z1], [pd.x0, pd.z1]];
+  for (let i = 0; i < 4; i++) {
+    const a = cs[i], b = cs[(i + 1) % 4], n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+    for (let k = 0; k < n; k++) pts.push({ x: lerp(a[0], b[0], k / n), z: lerp(a[1], b[1], k / n), corner: k === 0 });
+  }
+  const A = new V3(), B = new V3();
+  pts.forEach((p, i) => {
+    const y = heightAt(p.x, p.z), h = p.corner ? 1.7 : 1.25;
+    const post = new THREE.Mesh(postGeo, fenceMat); post.scale.y = h; post.position.set(p.x, y + h / 2 - 0.1, p.z); post.castShadow = true; g.add(post);
+    const top = new THREE.Mesh(UG.sph, p.corner ? fenceTop : fenceMat); top.scale.setScalar(p.corner ? 0.2 : 0.12); top.position.set(p.x, y + h - 0.08, p.z); g.add(top);
+    const q = pts[(i + 1) % pts.length], y2 = heightAt(q.x, q.z);
+    for (const hh of [0.45, 0.9]) {
+      A.set(p.x, y + hh, p.z); B.set(q.x, y2 + hh, q.z);
+      const rail = new THREE.Mesh(UG.box, fenceMat); rail.position.lerpVectors(A, B, 0.5); rail.scale.set(0.07, 0.11, A.distanceTo(B)); rail.lookAt(B); rail.castShadow = true; g.add(rail);
+    }
+  });
+  g.userData = { kind: 'paddock', ref: pd };
+  return g;
+}
+function paddockValid(x0, z0, x1, z1) {
+  const w = x1 - x0, d = z1 - z0;
+  if (w < 5 || d < 5) return 'Die Koppel ist zu klein – zieh sie etwas größer.';
+  if (w > 70 || d > 70) return 'So eine riesige Koppel? Etwas kleiner bitte.';
+  for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) if (Math.hypot(x, z) > WORLD_R) return 'Die Koppel ragt zu weit in den tiefen Wald.';
+  for (const p of paddocks) if (x0 < p.x1 && x1 > p.x0 && z0 < p.z1 && z1 > p.z0) return 'Hier steht schon eine Koppel.';
+  return null;
+}
+function addPaddock(d, announce = false) {
+  const pd = { id: d.id ?? nextPid, x0: d.x0, z0: d.z0, x1: d.x1, z1: d.z1 }; nextPid = Math.max(nextPid, pd.id + 1);
+  pd.mesh = buildPaddockMesh(pd); scene.add(pd.mesh); paddocks.push(pd);
+  if (announce) {
+    let n = 0;
+    for (const u of unicorns) if (paddockAt(u.x, u.z) === pd) { if (u.goal !== 'cmd') { u.setIdle(1); u.paddock = pd.id; } n++; }
+    toast(n ? `🏡 Koppel gebaut – ${n} Einhorn${n > 1 ? 'er' : ''} wohn${n > 1 ? 'en' : 't'} jetzt hier.` : '🏡 Koppel gebaut! Schicke ein Einhorn hinein.');
+    chime([392, 523, 659]);
+  }
+  updateStats(); return pd;
+}
+function removePaddock(pd) {
+  scene.remove(pd.mesh); paddocks.splice(paddocks.indexOf(pd), 1);
+  for (const u of unicorns) if (u.paddock === pd.id) u.paddock = null;
+  updateStats();
+}
+
+/* Vorschau beim Bauen */
+const previewLine = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(41 * 3), 3)),
+  new THREE.LineBasicMaterial({ color: '#ff5fa2', depthTest: false, transparent: true }));
+previewLine.frustumCulled = false; previewLine.visible = false; previewLine.renderOrder = 5; scene.add(previewLine);
+const cornerMark = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 8), new THREE.MeshBasicMaterial({ color: '#ff5fa2' }));
+cornerMark.rotation.x = Math.PI; cornerMark.visible = false; scene.add(cornerMark);
+let paddockStart = null;
+function updatePreviewRect(x0, z0, x1, z1, ok) {
+  const cs = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], pos = previewLine.geometry.attributes.position; let n = 0;
+  for (let i = 0; i < 4; i++) { const a = cs[i], b = cs[(i + 1) % 4]; for (let k = 0; k < 10; k++) { const x = lerp(a[0], b[0], k / 10), z = lerp(a[1], b[1], k / 10); pos.setXYZ(n++, x, heightAt(x, z) + 0.5, z); } }
+  pos.setXYZ(n, x0, heightAt(x0, z0) + 0.5, z0); pos.needsUpdate = true;
+  previewLine.material.color.set(ok ? '#3fcf7f' : '#ff4f5e'); previewLine.visible = true;
+}
+function cancelPaddock() { paddockStart = null; previewLine.visible = false; cornerMark.visible = false; }
+
+/* ───────────────────────── Dekoration ───────────────────────── */
+function addDeco(d) {
+  const rng = mulberry32(d.seed), g = new THREE.Group(), y = heightAt(d.x, d.z);
+  const add = (geo, mat, x, yy, z, s, cast = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, yy, z); if (typeof s === 'number') m.scale.setScalar(s); else m.scale.set(...s); m.castShadow = cast; g.add(m); return m; };
+  let obstacle = null;
+  if (d.type === 'flowers') {
+    for (let i = 0; i < 7; i++) {
+      const a = rng() * TAU, r = rng() * 1.1, fx = Math.cos(a) * r, fz = Math.sin(a) * r, s = 1 + rng() * 0.7, fy = heightAt(d.x + fx, d.z + fz) - y;
+      add(NG.petal, new THREE.MeshLambertMaterial({ color: FLOWER_COLS[Math.floor(rng() * FLOWER_COLS.length)] }), fx, fy + 0.26 * s, fz, [s, 0.45 * s, s], false);
+      add(NG.center, NM.center, fx, fy + 0.31 * s, fz, s, false); add(NG.fstem, NM.green, fx, fy + 0.13 * s, fz, s, false);
+    }
+  } else if (d.type === 'tree' || d.type === 'blossom') {
+    const s = 0.9 + rng() * 0.5, cols = d.type === 'blossom' ? BLOSSOM_COLS : LEAF_COLS;
+    const lm = new THREE.MeshLambertMaterial({ color: cols[Math.floor(rng() * cols.length)], flatShading: true });
+    add(NG.trunk, NM.trunk, 0, 1.0 * s - 0.1, 0, [1.1 * s, 2 * s, 1.1 * s]);
+    add(NG.blob, lm, 0, 3.0 * s, 0, 1.5 * s); add(NG.blob, lm, 0.9 * s, 2.5 * s, 0.3 * s, 1.05 * s); add(NG.blob, lm, -0.8 * s, 2.6 * s, -0.4 * s, 1.1 * s);
+    obstacle = addObstacle({ x: d.x, z: d.z, r: 0.35 * s });
+  } else if (d.type === 'mushroom') {
+    const s = 2.4 + rng() * 1.4;
+    add(NG.stem, NM.white, 0, 0.17 * s, 0, s);
+    const cm = new THREE.MeshLambertMaterial({ color: ['#ff5f7e', '#ff7fb8', '#b58cff'][Math.floor(rng() * 3)], emissive: '#ff5fc0', emissiveIntensity: 0 }); glowMats.push(cm);
+    add(NG.cap, cm, 0, 0.3 * s, 0, s);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + rng(); add(UG.sph, NM.white, Math.cos(a) * 0.22 * s, 0.3 * s + 0.24 * s, Math.sin(a) * 0.22 * s, 0.045 * s, false); }
+    obstacle = addObstacle({ x: d.x, z: d.z, r: 0.2 });
+  } else if (d.type === 'lantern') {
+    add(UG.cyl, NM.wood, 0, 1.1, 0, [0.07, 2.2, 0.07]); add(UG.sph, NM.lantern, 0, 2.35, 0, 0.26, false);
+    add(UG.cone, NM.wood, 0, 2.66, 0, [0.3, 0.22, 0.3]);
+    obstacle = addObstacle({ x: d.x, z: d.z, r: 0.1 });
+  }
+  g.position.set(d.x, y, d.z); g.rotation.y = d.ry;
+  const deco = { ...d, group: g, obstacle }; g.userData = { kind: 'deco', ref: deco };
+  scene.add(g); decos.push(deco); return deco;
+}
+const glowMats = [NM.cap];
+function removeDeco(d) { scene.remove(d.group); if (d.obstacle) removeObstacle(d.obstacle); decos.splice(decos.indexOf(d), 1); }
+
+/* ───────────────────────── Auswahl & Oberfläche ───────────────────────── */
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.07, 8, 40), new THREE.MeshBasicMaterial({ color: '#ff5fa2', transparent: true, opacity: 0.9, depthTest: false }));
+ring.rotation.x = Math.PI / 2; ring.visible = false; ring.renderOrder = 4; scene.add(ring);
+
+let tool = 'select', foodType = 'apple', decoType = 'flowers';
+const hintEl = $('#hint'), subEl = $('#sub');
+function setHint() {
+  const s = selected;
+  hintEl.textContent = {
+    select: s ? `Klicke auf die Wiese, um ${s.name} dorthin zu schicken – oder nochmal auf ${s.name} zum Streicheln.` : 'Klicke ein Einhorn an, um es auszuwählen. Ziehen dreht die Kamera, das Mausrad zoomt.',
+    feed: `${FOODS[foodType].icon} Klicke auf ein Einhorn, um es direkt zu füttern – oder auf die Wiese, um Futter hinzulegen.`,
+    paddock: paddockStart ? 'Jetzt die gegenüberliegende Ecke anklicken. (Esc = abbrechen)' : 'Klicke auf die Wiese, um die erste Ecke der Koppel zu setzen.',
+    deco: `${DECOS[decoType].icon} Klicke auf die Wiese, um zu dekorieren.`,
+    remove: 'Klicke auf eine Koppel, eine Dekoration oder Futter, um es zu entfernen.',
+  }[tool];
+}
+function setTool(t) {
+  tool = t; cancelPaddock();
+  document.querySelectorAll('#tools .tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  subEl.innerHTML = ''; subEl.classList.toggle('on', t === 'feed' || t === 'deco');
+  const list = t === 'feed' ? FOODS : t === 'deco' ? DECOS : null;
+  if (list) for (const [id, o] of Object.entries(list)) {
+    const b = document.createElement('button'); b.className = 'tool' + ((t === 'feed' ? foodType : decoType) === id ? ' on' : '');
+    b.innerHTML = `<span class="ico">${o.icon}</span>${o.name}`;
+    b.onclick = () => { if (t === 'feed') foodType = id; else decoType = id; setTool(t); };
+    subEl.append(b);
+  }
+  canvas.style.cursor = t === 'select' ? '' : 'crosshair';
+  setHint();
+}
+document.querySelectorAll('#tools .tool[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+function select(u) {
+  if (selected) selected.tag.classList.remove('sel');
+  selected = u; if (!u) follow = false;
+  $('#panel').classList.toggle('on', !!u); ring.visible = !!u;
+  if (u) { u.tag.classList.add('sel'); $('#uName').value = u.name; buildAccGrid(); updatePanel(); }
+  $('#aFollow').classList.toggle('on', follow);
+  setHint();
+}
+function buildAccGrid() {
+  const g = $('#accGrid'); g.innerHTML = '';
+  for (const a of ACCESSORIES) {
+    const b = document.createElement('button'); b.className = 'acc' + (selected.acc.has(a.id) ? ' on' : '');
+    b.innerHTML = `<span class="ico">${a.icon}</span>${a.name}`;
+    b.onclick = () => {
+      const u = selected; if (!u) return;
+      if (u.acc.has(a.id)) u.acc.delete(a.id);
+      else {
+        for (const o of ACCESSORIES) if (o.slot === a.slot) u.acc.delete(o.id);
+        u.acc.add(a.id); u.joy = clamp(u.joy + 5, 0, 100); u.emote('🤩'); chime([880, 1175]);
+        sparkleBurst(u.headPos(), 10, 1.5);
+      }
+      u.build(); buildAccGrid(); save();
+    };
+    g.append(b);
+  }
+}
+function updatePanel() {
+  const u = selected; if (!u) return;
+  $('#bSat .fill').style.width = u.sat + '%'; $('#bEnergy .fill').style.width = u.energy + '%'; $('#bJoy .fill').style.width = u.joy + '%';
+  $('#uMood').textContent = (u.isFoal() ? 'Fohlen · ' : '') + u.mood();
+  let best = null, bn = 1;
+  for (const o of unicorns) if (o !== u) { const n = friends.get(friendKey(u, o)) || 0; if (n > bn) { bn = n; best = o; } }
+  const home = u.paddock != null ? '🏡 wohnt in einer Koppel' : '🌿 läuft frei herum';
+  $('#uFriend').textContent = home + (best ? ` · 💞 beste Freundschaft: ${best.name}` : '');
+}
+function updateStats() {
+  const n = unicorns.length, joy = n ? Math.round(unicorns.reduce((s, u) => s + u.joy, 0) / n) : 0;
+  $('#stats').textContent = `🦄 ${n}  ·  🏡 ${paddocks.length}  ·  ${joy > 70 ? '😊' : joy > 40 ? '🙂' : '😟'} Zooglück ${joy}%`;
+}
+$('#uClose').onclick = () => select(null);
+$('#uName').oninput = e => { if (selected) { selected.name = e.target.value.trim() || 'Einhorn'; selected.tag.textContent = selected.name; setHint(); } };
+$('#uName').onchange = () => save();
+$('#aPet').onclick = () => selected?.pet();
+$('#aMagic').onclick = () => selected?.magic();
+$('#aFollow').onclick = () => { follow = !follow; $('#aFollow').classList.toggle('on', follow); };
+$('#aLook').onclick = () => selected && openCreator(selected);
+$('#aBye').onclick = () => {
+  const u = selected; if (!u || !confirm(`${u.name} wirklich in die Freiheit entlassen?`)) return;
+  sparkleBurst(u.headPos(), 30, 4); toast(`👋 ${u.name} galoppiert glücklich in den Zauberwald.`);
+  select(null); u.destroy(); updateStats(); save();
+};
+$('#btnRandom').onclick = () => createUnicorn(randomName(), randomLook());
+$('#btnCreate').onclick = () => openCreator(null);
+$('#btnSound').onclick = () => { soundOn = !soundOn; $('#btnSound').textContent = soundOn ? '🔔' : '🔕'; };
+$('#btnHelp').onclick = () => $('#help').classList.add('on');
+$('#hOk').onclick = () => $('#help').classList.remove('on');
+$('#hReset').onclick = () => { if (confirm('Wirklich den ganzen Zoo löschen und neu anfangen?')) { resetting = true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
+$('#btnTime').onclick = () => { world.ffTarget = world.night || world.time > 0.42 ? 0.06 : 0.6; };
+let resetting = false;
+
+/* ───────────────────────── Einhorn-Editor ───────────────────────── */
+let draft = null, editing = null, pv = null;
+function initPreview() {
+  const c = $('#preview'), r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.toneMapping = THREE.NeutralToneMapping;
+  const s = new THREE.Scene(); s.add(new THREE.HemisphereLight(0xffffff, 0xb9e986, 1.5));
+  const d = new THREE.DirectionalLight(0xffffff, 2); d.position.set(3, 6, 5); s.add(d);
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.1, 50); cam.position.set(4.2, 2.7, 6.4); cam.lookAt(0, 1.55, 0);
+  const holder = new THREE.Group(); s.add(holder);
+  pv = { r, s, cam, holder, parts: null };
+}
+function refreshPreview() {
+  if (!pv) initPreview();
+  if (pv.parts) { pv.holder.remove(pv.parts.rig); pv.parts.mats.forEach(m => m.dispose()); }
+  pv.parts = buildUnicornModel(draft, editing ? editing.acc : new Set());
+  pv.holder.add(pv.parts.rig); pv.holder.scale.setScalar(draft.size);
+  const mk = JSON.stringify(draft.mane);
+  const mark = (sel, fn) => document.querySelectorAll(sel + ' .sw, ' + sel + ' .btn').forEach((b, i) => b.classList.toggle('on', fn(i)));
+  mark('#cCoat', i => COATS[i] === draft.coat); mark('#cMane', i => JSON.stringify(MANES[i].c) === mk);
+  mark('#cHorn', i => HORNS[i] === draft.horn); mark('#cEye', i => EYES[i] === draft.eye);
+  mark('#cStyle', i => i === draft.maneStyle); mark('#cPattern', i => i === draft.pattern); mark('#cWings', i => (i === 1) === draft.wings);
+  $('#cSize').value = draft.size; $('#cCoatX').value = draft.coat; $('#cManeX').value = draft.mane[0];
+}
+function buildCreatorUI() {
+  const sw = (host, bg, title, fn) => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = bg; b.title = title; b.onclick = () => { fn(); refreshPreview(); }; $(host).append(b); };
+  const seg = (host, labels, fn) => labels.forEach((l, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = l; b.onclick = () => { fn(i); refreshPreview(); }; $(host).append(b); });
+  COATS.forEach(c => sw('#cCoat', c, 'Fellfarbe', () => draft.coat = c));
+  MANES.forEach(m => sw('#cMane', m.c.length > 1 ? `linear-gradient(135deg,${m.c.join(',')})` : m.c[0], m.n, () => draft.mane = [...m.c]));
+  HORNS.forEach(c => sw('#cHorn', c, 'Hornfarbe', () => draft.horn = c));
+  EYES.forEach(c => sw('#cEye', c, 'Augenfarbe', () => draft.eye = c));
+  seg('#cStyle', STYLES, i => draft.maneStyle = i); seg('#cPattern', PATTERNS, i => draft.pattern = i); seg('#cWings', ['Ohne', 'Mit Flügeln 🪽'], i => draft.wings = i === 1);
+  $('#cCoatX').oninput = e => { draft.coat = e.target.value; refreshPreview(); };
+  $('#cManeX').oninput = e => { draft.mane = [e.target.value]; refreshPreview(); };
+  $('#cSize').oninput = e => { draft.size = +e.target.value; pv.holder.scale.setScalar(draft.size); };
+  $('#cNameRnd').onclick = () => $('#cName').value = randomName();
+  $('#cRandom').onclick = () => { draft = randomLook(); if (!editing) $('#cName').value = randomName(); refreshPreview(); };
+  $('#cCancel').onclick = closeCreator;
+  $('#cOk').onclick = () => {
+    const name = $('#cName').value.trim() || randomName();
+    if (editing) { editing.look = draft; editing.name = name; editing.tag.textContent = name; editing.build(); sparkleBurst(editing.headPos(), 20, 3); chime([659, 880, 1175]); select(editing); save(); }
+    else createUnicorn(name, draft);
+    closeCreator();
+  };
+}
+function openCreator(u) {
+  editing = u; draft = u ? JSON.parse(JSON.stringify(u.look)) : randomLook();
+  $('#cTitle').textContent = u ? `${u.name} umgestalten` : 'Neues Einhorn erschaffen';
+  $('#cOk').textContent = u ? '✨ Übernehmen' : '✨ Erschaffen';
+  $('#cName').value = u ? u.name : randomName();
+  $('#creator').classList.add('on');
+  refreshPreview();
+  const w = $('#previewWrap'); pv.r.setSize(w.clientWidth, w.clientHeight, false); pv.cam.aspect = w.clientWidth / w.clientHeight; pv.cam.updateProjectionMatrix();
+}
+function closeCreator() { $('#creator').classList.remove('on'); editing = null; }
+buildCreatorUI();
+
+/* ───────────────────────── Eingabe ───────────────────────── */
+const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let downX = 0, downY = 0, downT = 0;
+function setRay(e) { mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); raycaster.setFromCamera(mouse, camera); }
+function pickUnicorn() { const h = raycaster.intersectObjects(unicorns.map(u => u.hit), false)[0]; return h ? h.object.userData.unicorn : null; }
+function pickGround() { const h = raycaster.intersectObject(terrain, false)[0]; return h ? h.point : null; }
+function pickRemovable() {
+  const hits = raycaster.intersectObjects([...decos.map(d => d.group), ...foods.map(f => f.mesh), ...paddocks.map(p => p.mesh)], true);
+  for (const h of hits) { let o = h.object; while (o && !o.userData.kind) o = o.parent; if (o) return o.userData; }
+  return null;
+}
+canvas.addEventListener('pointerdown', e => { downX = e.clientX; downY = e.clientY; downT = performance.now(); });
+canvas.addEventListener('pointerup', e => {
+  if (e.button !== 0 || Math.hypot(e.clientX - downX, e.clientY - downY) > 7 || performance.now() - downT > 600) return;
+  setRay(e); onClick();
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.buttons) return;
+  setRay(e);
+  if (tool === 'paddock' && paddockStart) {
+    const g = pickGround(); if (!g) return;
+    const x0 = Math.min(paddockStart.x, g.x), x1 = Math.max(paddockStart.x, g.x), z0 = Math.min(paddockStart.z, g.z), z1 = Math.max(paddockStart.z, g.z);
+    updatePreviewRect(x0, z0, x1, z1, !paddockValid(x0, z0, x1, z1));
+  } else if (tool === 'select') canvas.style.cursor = pickUnicorn() ? 'pointer' : '';
+});
+function onClick() {
+  const u = pickUnicorn(), g = pickGround();
+  if (tool === 'select') {
+    if (u) { if (u === selected) u.pet(); else { select(u); chime([660]); } }
+    else if (selected && g) {
+      if (Math.hypot(g.x, g.z) > WORLD_R) { toast('Dort ist der Wald zu dicht 🌲'); return; }
+      if (isWater(g.x, g.z)) { toast('Einhörner mögen keine nassen Hufe 💦'); return; }
+      selected.command(g.x, g.z);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; spawnP(glowTex, _v.set(g.x + Math.cos(a) * 0.7, g.y + 0.3, g.z + Math.sin(a) * 0.7), { vel: new V3(0, 1, 0), life: 0.8, size: 0.4, color: '#ff8fc3', add: true }); }
+    }
+  } else if (tool === 'feed') {
+    if (u) { u.feed(foodType); u.emote(FOODS[foodType].icon); }
+    else if (g) placeFood(foodType, g.x, g.z);
+  } else if (tool === 'paddock') {
+    if (!g) return;
+    if (!paddockStart) {
+      if (Math.hypot(g.x, g.z) > WORLD_R) { toast('Dort ist der Wald zu dicht 🌲'); return; }
+      paddockStart = { x: g.x, z: g.z }; cornerMark.position.set(g.x, g.y + 1.2, g.z); cornerMark.visible = true; setHint();
+    } else {
+      const x0 = Math.min(paddockStart.x, g.x), x1 = Math.max(paddockStart.x, g.x), z0 = Math.min(paddockStart.z, g.z), z1 = Math.max(paddockStart.z, g.z);
+      const err = paddockValid(x0, z0, x1, z1);
+      if (err) { toast(err); return; }
+      addPaddock({ x0, z0, x1, z1 }, true); cancelPaddock(); setHint(); save();
+    }
+  } else if (tool === 'deco') {
+    if (!g) return;
+    if (isWater(g.x, g.z)) { toast('Hier ist es zu nass 💦'); return; }
+    if (decos.length >= 150) { toast('Das ist genug Deko für einen Zoo 🌷'); return; }
+    addDeco({ type: decoType, x: g.x, z: g.z, ry: rand(0, TAU), seed: Math.floor(Math.random() * 1e9) });
+    sparkleBurst(_v.set(g.x, g.y + 0.5, g.z), 8, 1.5); chime([587, 740]); save();
+  } else if (tool === 'remove') {
+    const r = pickRemovable(); if (!r) return;
+    if (r.kind === 'deco') removeDeco(r.ref); else if (r.kind === 'food') removeFood(r.ref); else if (r.kind === 'paddock') { removePaddock(r.ref); toast('Koppel abgebaut – die Einhörner laufen wieder frei.'); }
+    chime([330]); save();
+  }
+}
+const keys = new Set();
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') {
+    if ($('#creator').classList.contains('on')) closeCreator();
+    else if ($('#help').classList.contains('on')) $('#help').classList.remove('on');
+    else if (paddockStart) { cancelPaddock(); setHint(); }
+    else if (tool !== 'select') setTool('select');
+    else select(null);
+  }
+  keys.add(e.key.toLowerCase());
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+
+/* ───────────────────────── Tag & Nacht ───────────────────────── */
+const C = s => new THREE.Color(s);
+const SKY = { topDay: C('#4aa3ff'), topNight: C('#0a0f3c'), botDay: C('#ffe3f1'), botNight: C('#3b2a6e'), sunset: C('#ffb48a'), dusk: C('#8a7be0'),
+  sunDay: C('#fff1d6'), moon: C('#8fa8ff'), hSkyDay: C('#cfe8ff'), hSkyNight: C('#6a72d8'), hGndDay: C('#9fd08a'), hGndNight: C('#1c2a3a') };
+const sunDir = new V3();
+function updateSky(dt) {
+  if (world.ffTarget != null) {
+    const rem = (world.ffTarget - world.time + 1) % 1, stepT = dt * 0.22;
+    if (rem <= stepT) { world.time = world.ffTarget; world.ffTarget = null; } else world.time = (world.time + stepT) % 1;
+  } else world.time = (world.time + dt / DAY_LENGTH) % 1;
+  const a = world.time * TAU, sinH = Math.sin(a);
+  const day = world.dayness = smoothstep(-0.12, 0.25, sinH), sunset = smoothstep(0.4, 0, Math.abs(sinH));
+  world.night = day < 0.3;
+  skyU.top.value.copy(SKY.topNight).lerp(SKY.topDay, day).lerp(SKY.dusk, sunset * 0.45);
+  skyU.bottom.value.copy(SKY.botNight).lerp(SKY.botDay, day).lerp(SKY.sunset, sunset * 0.75 * (0.3 + 0.7 * day));
+  scene.fog.color.copy(skyU.bottom.value);
+  sunDir.set(Math.cos(a), sinH, 0.35).normalize();
+  const t = controls.target;
+  sunSprite.position.copy(camera.position).addScaledVector(sunDir, 380);
+  moonSprite.position.copy(camera.position).addScaledVector(_v.set(-sunDir.x, -sunDir.y, sunDir.z), 380);
+  sunSprite.material.color.copy(SKY.sunDay).lerp(SKY.sunset, sunset);
+  const useSun = sinH > -0.02, ld = _v.copy(sunDir); if (!useSun) ld.set(-sunDir.x, -sunDir.y, sunDir.z);
+  ld.y = Math.max(ld.y, 0.22); ld.normalize();
+  sun.position.copy(t).addScaledVector(ld, 110); sun.target.position.copy(t);
+  sun.color.copy(SKY.moon).lerp(SKY.sunDay, day).lerp(SKY.sunset, sunset * day * 0.5);
+  sun.intensity = useSun ? 0.25 + 2.3 * smoothstep(-0.02, 0.3, sinH) : 0.4 + 0.6 * smoothstep(0.02, 0.3, -sinH);
+  hemi.intensity = 0.8 + 0.45 * day; hemi.color.copy(SKY.hSkyNight).lerp(SKY.hSkyDay, day); hemi.groundColor.copy(SKY.hGndNight).lerp(SKY.hGndDay, day);
+  stars.material.opacity = 1 - day; stars.visible = day < 0.98; stars.position.copy(camera.position);
+  fireflies.material.opacity = 1 - day; fireflies.visible = day < 0.9;
+  rainbow.children.forEach(m => m.material.opacity = 0.12 + 0.4 * day);
+  NM.lantern.emissiveIntensity = 0.3 + (1 - day) * 2.6;
+  glowMats.forEach(m => m.emissiveIntensity = (1 - day) * 0.3);
+  sky.position.copy(camera.position);
+  $('#btnTime').textContent = world.night ? '☀️' : '🌙';
+}
+
+/* ───────────────────────── Speichern & Laden ───────────────────────── */
+function save() {
+  if (resetting) return;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      v: 1, time: world.time, unicorns: unicorns.map(u => u.toJSON()),
+      paddocks: paddocks.map(p => ({ id: p.id, x0: p.x0, z0: p.z0, x1: p.x1, z1: p.z1 })),
+      decos: decos.map(d => ({ type: d.type, x: d.x, z: d.z, ry: d.ry, seed: d.seed })), friends: [...friends],
+    }));
+  } catch (e) { /* Speicher nicht verfügbar */ }
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if (!d || !d.unicorns) return false;
+    world.time = d.time ?? 0.08;
+    (d.paddocks || []).forEach(p => addPaddock(p));
+    (d.decos || []).forEach(x => addDeco(x));
+    d.unicorns.forEach(u => addUnicorn(u));
+    (d.friends || []).forEach(([k, v]) => friends.set(k, v));
+    return true;
+  } catch (e) { return false; }
+}
+if (!load()) {
+  [[-4, 2], [3, 5], [1, -4]].forEach(([x, z]) => addUnicorn({ name: randomName(), look: randomLook(), x, z }));
+  $('#help').classList.add('on');
+}
+setInterval(save, 8000);
+addEventListener('beforeunload', save);
+
+/* ───────────────────────── Hauptschleife ───────────────────────── */
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+setTool('select'); updateStats();
+
+const clock = new THREE.Clock(), fwd = new V3(), right = new V3(), move = new V3(), proj = new V3();
+let uiT = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  birthCd -= dt;
+
+  // Kamera
+  move.set(0, 0, 0);
+  camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); right.crossVectors(fwd, camera.up);
+  if (keys.has('w') || keys.has('arrowup')) move.add(fwd);
+  if (keys.has('s') || keys.has('arrowdown')) move.sub(fwd);
+  if (keys.has('d') || keys.has('arrowright')) move.add(right);
+  if (keys.has('a') || keys.has('arrowleft')) move.sub(right);
+  if (move.lengthSq()) { follow = false; $('#aFollow').classList.remove('on'); move.normalize().multiplyScalar(dt * (8 + camera.position.distanceTo(controls.target) * 0.6)); }
+  if (follow && selected) move.set(selected.x - controls.target.x, 0, selected.z - controls.target.z).multiplyScalar(Math.min(1, dt * 3));
+  const tr = Math.hypot(controls.target.x + move.x, controls.target.z + move.z);
+  if (tr > 72) { const nx = (controls.target.x + move.x) * 72 / tr, nz = (controls.target.z + move.z) * 72 / tr; move.x = nx - controls.target.x; move.z = nz - controls.target.z; }
+  move.y = (Math.max(heightAt(controls.target.x, controls.target.z), WATER_Y) + 1 - controls.target.y) * Math.min(1, dt * 4);
+  controls.target.add(move); camera.position.add(move);
+  controls.update();
+  const minY = Math.max(heightAt(camera.position.x, camera.position.z), WATER_Y) + 1.2;
+  if (camera.position.y < minY) camera.position.y = minY;
+
+  updateSky(dt);
+  for (const u of [...unicorns]) u.update(dt, t);
+  updateParticles(dt);
+
+  // Umgebung
+  for (const c of clouds) { c.position.x += c.userData.speed * dt; if (c.position.x > 230) c.position.x = -230; }
+  if (fireflies.visible) {
+    const pos = fireflies.geometry.attributes.position;
+    fireflyBase.forEach((f, i) => pos.setXYZ(i, f.x + Math.sin(t * 0.5 + f.ph) * 1.5, f.y + Math.sin(t * 0.9 + f.ph * 2) * 0.6, f.z + Math.cos(t * 0.4 + f.ph) * 1.5));
+    pos.needsUpdate = true;
+  }
+  for (const b of butterflies) {
+    const d = b.userData, a = t * d.sp + d.ph, x = d.cx + Math.cos(a) * d.rad, z = d.cz + Math.sin(a * 1.3) * d.rad;
+    b.visible = world.dayness > 0.4;
+    b.position.set(x, Math.max(heightAt(x, z), WATER_Y) + 1.1 + Math.sin(t * 2 + d.ph) * 0.4, z);
+    b.rotation.y = -a; const f = Math.sin(t * 16 + d.ph) * 0.9; d.wl.rotation.z = f; d.wr.rotation.z = -f;
+  }
+  for (const f of foods) f.mesh.rotation.y += dt * 0.6;
+  if (selected) {
+    ring.position.set(selected.x, heightAt(selected.x, selected.z) + 0.25, selected.z);
+    ring.scale.setScalar(selected.scale() * (1 + Math.sin(t * 4) * 0.06));
+  }
+  if (cornerMark.visible) cornerMark.rotation.y = t * 3;
+
+  // Namensschilder
+  for (const u of unicorns) {
+    u.headPos(proj); proj.y += 0.3 * u.scale();
+    const dist = proj.distanceTo(camera.position); proj.project(camera);
+    if (proj.z > 1 || proj.z < -1 || dist > 75) { u.tag.style.display = 'none'; continue; }
+    u.tag.style.display = '';
+    u.tag.style.transform = `translate(-50%,-100%) translate(${((proj.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - proj.y) / 2 * innerHeight).toFixed(1)}px)`;
+    u.tag.style.opacity = u === selected ? 1 : clamp(1.4 - dist / 55, 0.25, 0.9);
+  }
+  uiT -= dt; if (uiT <= 0) { uiT = 0.3; updatePanel(); updateStats(); }
+
+  renderer.render(scene, camera);
+  if (pv && $('#creator').classList.contains('on')) {
+    pv.holder.rotation.y = t * 0.7;
+    if (pv.parts) { pv.parts.tail.rotation.y = Math.sin(t * 2.3) * 0.35; pv.parts.neck.rotation.x = Math.sin(t * 1.2) * 0.07; if (pv.parts.wings) { const f = 0.6 + Math.sin(t * 3) * 0.2; pv.parts.wings[0].rotation.z = -f; pv.parts.wings[1].rotation.z = f; } pv.parts.eyes.forEach(e => e.scale.y = e.userData.r * (t % 3.5 < 0.12 ? 0.1 : 1)); }
+    pv.r.render(pv.s, pv.cam);
+  }
+}
+$('#loading').remove();
+frame();
+</script>
+</body>
+</html>
