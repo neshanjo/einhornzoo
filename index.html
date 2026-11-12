@@ -1168,12 +1168,12 @@ function buildFood(type) {
   else { ['#ff8fc3', '#ffe14d', '#8fd3ff'].forEach((c, i) => add(UG.cyl, c, 0, 0.08 + i * 0.13, 0, 0.3 - i * 0.03, 0.13, 0.3 - i * 0.03)); add(UG.sph, '#ffffff', 0, 0.45, 0, 0.2, 0.06, 0.2); add(UG.sph, '#ff3f6e', 0, 0.52, 0, 0.07, 0.07, 0.07); }
   return g;
 }
-function placeFood(type, x, z) {
-  if (isWater(x, z)) { toast('Im Wasser wird das Futter nass 💦'); return; }
+function placeFood(type, x, z, silent = false) {
+  if (isWater(x, z)) { if (!silent) toast('Im Wasser wird das Futter nass 💦'); return; }
   if (foods.length >= 30) removeFood(foods[0]);
   const mesh = buildFood(type); mesh.position.set(x, heightAt(x, z), z); mesh.rotation.y = rand(0, TAU);
   const f = { type, x, z, mesh, claimed: null, gone: false }; mesh.userData = { kind: 'food', ref: f };
-  scene.add(mesh); foods.push(f); chime([440]);
+  scene.add(mesh); foods.push(f); if (!silent) chime([440]);
   // hungrige, untätige Einhörner sofort aufmerksam machen
   for (const u of unicorns) if (u.state === 'idle' && !u.waitingFor && u.sat < 65) u.timer = Math.min(u.timer, 0.3);
 }
@@ -1252,7 +1252,7 @@ const glowMats = [NM.cap];
 function removeDeco(d) { scene.remove(d.group); if (d.obstacle) removeObstacle(d.obstacle); decos.splice(decos.indexOf(d), 1); }
 
 /* ───────────────────────── Auswahl & Oberfläche ───────────────────────── */
-const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.07, 8, 40), new THREE.MeshBasicMaterial({ color: '#ff5fa2', transparent: true, opacity: 0.9, depthTest: false }));
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.03, 8, 56), new THREE.MeshBasicMaterial({ color: '#ff5fa2', transparent: true, opacity: 0.75, depthWrite: false }));
 ring.rotation.x = Math.PI / 2; ring.visible = false; ring.renderOrder = 4; scene.add(ring);
 
 let tool = 'select', foodType = 'apple', decoType = 'flowers';
@@ -1335,7 +1335,7 @@ $('#aBye').onclick = () => {
 };
 $('#btnRandom').onclick = () => createUnicorn(randomName(), randomLook());
 $('#btnCreate').onclick = () => openCreator(null);
-$('#btnSound').onclick = () => { soundOn = !soundOn; $('#btnSound').textContent = soundOn ? '🔔' : '🔕'; };
+$('#btnSound').onclick = () => { soundOn = !soundOn; $('#btnSound').textContent = soundOn ? '🔔' : '🔕'; save(); };
 $('#btnHelp').onclick = () => $('#help').classList.add('on');
 $('#hOk').onclick = () => $('#help').classList.remove('on');
 $('#hReset').onclick = () => { if (confirm('Wirklich den ganzen Zoo löschen und neu anfangen?')) { resetting = true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
@@ -1450,7 +1450,7 @@ function onClick() {
   } else if (tool === 'feed') {
     if (u) { u.feed(foodType); u.emote(FOODS[foodType].icon); }
     else if (tr) refillTrough(tr);
-    else if (g) placeFood(foodType, g.x, g.z);
+    else if (g) { placeFood(foodType, g.x, g.z); save(); }
   } else if (tool === 'trough') {
     if (tr) { refillTrough(tr); return; }
     if (!g) return;
@@ -1528,6 +1528,8 @@ function save() {
       v: 1, time: world.time, unicorns: unicorns.map(u => u.toJSON()),
       troughs: troughs.map(t => ({ x: t.x, z: t.z, ry: t.ry, fill: t.fill })),
       decos: decos.map(d => ({ type: d.type, x: d.x, z: d.z, ry: d.ry, seed: d.seed })), friends: [...friends],
+      foods: foods.map(f => ({ type: f.type, x: f.x, z: f.z })), birthCd, sound: soundOn,
+      cam: [...camera.position.toArray(), ...controls.target.toArray()],
     }));
   } catch (e) { /* Speicher nicht verfügbar */ }
 }
@@ -1539,6 +1541,10 @@ function load() {
     (d.decos || []).forEach(x => addDeco(x));
     d.unicorns.forEach(u => addUnicorn(u));
     (d.friends || []).forEach(([k, v]) => friends.set(k, v));
+    (d.foods || []).forEach(f => FOODS[f.type] && placeFood(f.type, f.x, f.z, true));
+    if (typeof d.birthCd === 'number') birthCd = d.birthCd;
+    if (d.sound === false) { soundOn = false; $('#btnSound').textContent = '🔕'; }
+    if (Array.isArray(d.cam) && d.cam.length === 6 && d.cam.every(Number.isFinite)) { camera.position.fromArray(d.cam, 0); controls.target.fromArray(d.cam, 3); }
     return true;
   } catch (e) { return false; }
 }
@@ -1549,6 +1555,8 @@ if (!load()) {
 }
 setInterval(save, 8000);
 addEventListener('beforeunload', save);
+addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
 /* ───────────────────────── Minikarte ───────────────────────── */
 const mm = $('#minimap'), MAP_R = WORLD_R + 14, MM = Math.round(176 * Math.min(devicePixelRatio, 2));
